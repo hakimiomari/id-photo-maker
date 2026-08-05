@@ -57,9 +57,19 @@ interface PhotoState {
   exporting: boolean;
   exportResult: ExportResult | null;
 
+  /**
+   * Derived state, recomputed once per change rather than per read.
+   *
+   * These must be stored values, not methods: zustand v5 runs the selector on
+   * every getSnapshot, so a method returning a freshly built object hands React
+   * a new identity each time and trips "The result of getSnapshot should be
+   * cached to avoid an infinite loop".
+   */
+  head: HeadBox | null;
+  solution: CropSolution | null;
+
+  /** Safe as methods — both return a stable reference or a primitive. */
   format: () => PhotoFormat;
-  head: () => HeadBox | null;
-  solution: () => CropSolution | null;
   stage: () => Stage;
 
   setFormat: (id: string) => void;
@@ -103,254 +113,283 @@ function encodeWorker() {
   return encodeClient;
 }
 
-export const usePhotoStore = create<PhotoState>((set, get) => ({
-  formatId: DEFAULT_FORMAT_ID,
-  status: "idle",
-  error: null,
-  file: null,
-  working: null,
-  source: null,
-  workingSize: null,
-  sourceScale: 1,
-  faces: [],
-  faceIndex: 0,
-  adjust: { ...IDENTITY_ADJUSTMENTS },
-  image: { ...NEUTRAL_ADJUSTMENTS },
-  exporting: false,
-  exportResult: null,
+/** Head geometry + crop solution for a given state. Pure; never throws. */
+function derive(state: PhotoState): Pick<PhotoState, "head" | "solution"> {
+  const face = state.faces[state.faceIndex];
+  if (!face || !state.workingSize) return { head: null, solution: null };
 
-  format: () => getFormat(get().formatId),
-
-  head: () => {
-    const { faces, faceIndex, workingSize } = get();
-    const face = faces[faceIndex];
-    if (!face || !workingSize) return null;
-    return estimateHeadBounds({ landmarks: face.landmarks, image: workingSize });
-  },
-
-  solution: () => {
-    const state = get();
-    const head = state.head();
-    if (!head || !state.workingSize) return null;
-    return solveCrop({
+  try {
+    const head = estimateHeadBounds({
+      landmarks: face.landmarks,
+      image: state.workingSize,
+    });
+    const solution = solveCrop({
       head,
-      format: state.format(),
+      format: getFormat(state.formatId),
       image: state.workingSize,
       adjust: state.adjust,
       sourceScale: state.sourceScale,
     });
-  },
+    return { head, solution };
+  } catch {
+    // Degenerate landmarks (chin above crown) — the UI falls back to the
+    // "no usable face" empty state rather than rendering a broken crop.
+    return { head: null, solution: null };
+  }
+}
 
-  stage: () => {
-    const state = get();
-    if (state.exportResult) return "download";
-    if (state.status === "ready") return "adjust";
-    if (state.status === "loading") return "photo";
-    return "format";
-  },
-
-  setFormat: (id) => {
-    getFormat(id); // throws early on a bad id rather than rendering nonsense
-    set({ formatId: id, adjust: { ...IDENTITY_ADJUSTMENTS }, exportResult: null });
-  },
-
-  loadFile: async (file) => {
-    const previous = get();
-    previous.working?.close();
-    if (previous.source && previous.source !== previous.working) {
-      previous.source.close();
-    }
-    if (previous.exportResult) URL.revokeObjectURL(previous.exportResult.url);
-
-    set({
-      status: "loading",
-      error: null,
-      file,
-      working: null,
-      source: null,
-      faces: [],
-      faceIndex: 0,
-      adjust: { ...IDENTITY_ADJUSTMENTS },
-      exportResult: null,
+export const usePhotoStore = create<PhotoState>((set, get) => {
+  /** set(), then recompute anything derived from the new state. */
+  const setDerived = (
+    partial: Partial<PhotoState> | ((state: PhotoState) => Partial<PhotoState>),
+  ) =>
+    set((state) => {
+      const patch = typeof partial === "function" ? partial(state) : partial;
+      return { ...patch, ...derive({ ...state, ...patch }) };
     });
 
-    try {
-      const response = await detectWorker().send({
-        type: "process",
+  return {
+    formatId: DEFAULT_FORMAT_ID,
+    status: "idle",
+    error: null,
+    file: null,
+    working: null,
+    source: null,
+    workingSize: null,
+    sourceScale: 1,
+    faces: [],
+    faceIndex: 0,
+    adjust: { ...IDENTITY_ADJUSTMENTS },
+    image: { ...NEUTRAL_ADJUSTMENTS },
+    exporting: false,
+    exportResult: null,
+
+    format: () => getFormat(get().formatId),
+
+    head: null,
+    solution: null,
+
+    stage: () => {
+      const state = get();
+      if (state.exportResult) return "download";
+      if (state.status === "ready") return "adjust";
+      if (state.status === "loading") return "photo";
+      return "format";
+    },
+
+    setFormat: (id) => {
+      getFormat(id); // throws early on a bad id rather than rendering nonsense
+      setDerived({
+        formatId: id,
+        adjust: { ...IDENTITY_ADJUSTMENTS },
+        exportResult: null,
+      });
+    },
+
+    loadFile: async (file) => {
+      const previous = get();
+      previous.working?.close();
+      if (previous.source && previous.source !== previous.working) {
+        previous.source.close();
+      }
+      if (previous.exportResult) URL.revokeObjectURL(previous.exportResult.url);
+
+      setDerived({
+        status: "loading",
+        error: null,
         file,
-        config: faceLandmarkerConfig,
+        working: null,
+        source: null,
+        faces: [],
+        faceIndex: 0,
+        adjust: { ...IDENTITY_ADJUSTMENTS },
+        exportResult: null,
       });
 
-      if (!response.ok) {
-        set({ status: "error", error: response.message });
-        return;
-      }
-      if (response.faces.length === 0) {
-        response.working.close();
-        response.source?.close();
+      try {
+        const response = await detectWorker().send({
+          type: "process",
+          file,
+          config: faceLandmarkerConfig,
+        });
+
+        if (!response.ok) {
+          set({ status: "error", error: response.message });
+          return;
+        }
+        if (response.faces.length === 0) {
+          response.working.close();
+          response.source?.close();
+          set({
+            status: "error",
+            error:
+              "No face found in that photo. Use a clear, front-facing portrait with the whole head visible.",
+          });
+          return;
+        }
+
+        setDerived({
+          status: "ready",
+          working: response.working,
+          source: response.source ?? response.working,
+          workingSize: response.workingSize,
+          sourceScale: response.sourceScale,
+          faces: response.faces,
+          faceIndex: 0,
+        });
+      } catch (error) {
+        detectWorker().terminate();
         set({
           status: "error",
           error:
-            "No face found in that photo. Use a clear, front-facing portrait with the whole head visible.",
+            error instanceof Error
+              ? error.message
+              : "Something went wrong while processing that photo.",
         });
-        return;
       }
+    },
 
-      set({
-        status: "ready",
-        working: response.working,
-        source: response.source ?? response.working,
-        workingSize: response.workingSize,
-        sourceScale: response.sourceScale,
-        faces: response.faces,
-        faceIndex: 0,
-      });
-    } catch (error) {
-      detectWorker().terminate();
-      set({
-        status: "error",
-        error:
-          error instanceof Error
-            ? error.message
-            : "Something went wrong while processing that photo.",
-      });
-    }
-  },
+    selectFace: (index) =>
+      setDerived({ faceIndex: index, adjust: { ...IDENTITY_ADJUSTMENTS } }),
 
-  selectFace: (index) =>
-    set({ faceIndex: index, adjust: { ...IDENTITY_ADJUSTMENTS } }),
-
-  pan: (dx, dy) =>
-    set((state) => ({
-      adjust: {
-        ...state.adjust,
-        offsetX: state.adjust.offsetX + dx,
-        offsetY: state.adjust.offsetY + dy,
-      },
-    })),
-
-  zoomBy: (factor) =>
-    set((state) => ({
-      adjust: {
-        ...state.adjust,
-        scale: Math.min(MAX_SCALE, Math.max(MIN_SCALE, state.adjust.scale * factor)),
-      },
-    })),
-
-  setImageAdjustments: (adjustments) =>
-    set((state) => ({ image: { ...state.image, ...adjustments } })),
-
-  resetAdjust: () =>
-    set({ adjust: { ...IDENTITY_ADJUSTMENTS }, image: { ...NEUTRAL_ADJUSTMENTS } }),
-
-  exportPhoto: async (options = {}) => {
-    const state = get();
-    const solution = state.solution();
-    const source = state.source;
-    if (!solution || !source) return;
-
-    const format = state.format();
-    const digitalSpec = options.digital ? format.digital_spec : undefined;
-    if (options.digital && !digitalSpec) return;
-
-    const mimeType =
-      digitalSpec?.format === "png"
-        ? "image/png"
-        : (options.mimeType ?? "image/jpeg");
-
-    if (state.exportResult) URL.revokeObjectURL(state.exportResult.url);
-    set({ exporting: true, error: null, exportResult: null });
-
-    try {
-      // The bitmap is transferred into the worker and handed back with the
-      // response, so the main thread never holds two copies.
-      const response = await encodeWorker().send(
-        {
-          type: "encode",
-          source,
-          crop: toSourceRect(solution.rect, state.sourceScale),
-          format,
-          dpi: format.target_dpi,
-          mimeType,
-          adjustments: state.image,
-          ...(digitalSpec
-            ? {
-                digital: {
-                  width: digitalSpec.width_px,
-                  height: digitalSpec.height_px,
-                  maxBytes: digitalSpec.max_bytes,
-                },
-              }
-            : {}),
+    pan: (dx, dy) =>
+      setDerived((state) => ({
+        adjust: {
+          ...state.adjust,
+          offsetX: state.adjust.offsetX + dx,
+          offsetY: state.adjust.offsetY + dy,
         },
-        [source],
-      );
+      })),
 
-      if (!response.ok) {
+    zoomBy: (factor) =>
+      setDerived((state) => ({
+        adjust: {
+          ...state.adjust,
+          scale: Math.min(
+            MAX_SCALE,
+            Math.max(MIN_SCALE, state.adjust.scale * factor),
+          ),
+        },
+      })),
+
+    setImageAdjustments: (adjustments) =>
+      set((state) => ({ image: { ...state.image, ...adjustments } })),
+
+    resetAdjust: () =>
+      setDerived({
+        adjust: { ...IDENTITY_ADJUSTMENTS },
+        image: { ...NEUTRAL_ADJUSTMENTS },
+      }),
+
+    exportPhoto: async (options = {}) => {
+      const state = get();
+      const solution = state.solution;
+      const source = state.source;
+      if (!solution || !source) return;
+
+      const format = state.format();
+      const digitalSpec = options.digital ? format.digital_spec : undefined;
+      if (options.digital && !digitalSpec) return;
+
+      const mimeType =
+        digitalSpec?.format === "png"
+          ? "image/png"
+          : (options.mimeType ?? "image/jpeg");
+
+      if (state.exportResult) URL.revokeObjectURL(state.exportResult.url);
+      set({ exporting: true, error: null, exportResult: null });
+
+      try {
+        // The bitmap is transferred into the worker and handed back with the
+        // response, so the main thread never holds two copies.
+        const response = await encodeWorker().send(
+          {
+            type: "encode",
+            source,
+            crop: toSourceRect(solution.rect, state.sourceScale),
+            format,
+            dpi: format.target_dpi,
+            mimeType,
+            adjustments: state.image,
+            ...(digitalSpec
+              ? {
+                  digital: {
+                    width: digitalSpec.width_px,
+                    height: digitalSpec.height_px,
+                    maxBytes: digitalSpec.max_bytes,
+                  },
+                }
+              : {}),
+          },
+          [source],
+        );
+
+        if (!response.ok) {
+          set({
+            exporting: false,
+            error: response.message,
+            source: response.source ?? null,
+          });
+          return;
+        }
+
         set({
           exporting: false,
-          error: response.message,
-          source: response.source ?? null,
+          source: response.source,
+          exportResult: {
+            url: URL.createObjectURL(response.blob),
+            filename: exportFilename(
+              format,
+              mimeType,
+              digitalSpec ? "digital" : undefined,
+            ),
+            bytes: response.bytes,
+            width: response.width,
+            height: response.height,
+            dpi: response.dpi,
+            kind: digitalSpec ? "digital" : "print",
+          },
         });
-        return;
+      } catch (error) {
+        encodeWorker().terminate();
+        // The transferred bitmap died with the worker; the file is still here, so
+        // the user can retry from the original.
+        set({
+          exporting: false,
+          source: null,
+          error:
+            error instanceof Error
+              ? `${error.message} Please re-select your photo and try again.`
+              : "The export failed. Please try again.",
+        });
       }
+    },
 
-      set({
-        exporting: false,
-        source: response.source,
-        exportResult: {
-          url: URL.createObjectURL(response.blob),
-          filename: exportFilename(
-            format,
-            mimeType,
-            digitalSpec ? "digital" : undefined,
-          ),
-          bytes: response.bytes,
-          width: response.width,
-          height: response.height,
-          dpi: response.dpi,
-          kind: digitalSpec ? "digital" : "print",
-        },
-      });
-    } catch (error) {
-      encodeWorker().terminate();
-      // The transferred bitmap died with the worker; the file is still here, so
-      // the user can retry from the original.
-      set({
-        exporting: false,
+    clearExport: () => {
+      const result = get().exportResult;
+      if (result) URL.revokeObjectURL(result.url);
+      set({ exportResult: null });
+    },
+
+    reset: () => {
+      const state = get();
+      state.working?.close();
+      if (state.source && state.source !== state.working) state.source.close();
+      if (state.exportResult) URL.revokeObjectURL(state.exportResult.url);
+      setDerived({
+        status: "idle",
+        error: null,
+        file: null,
+        working: null,
         source: null,
-        error:
-          error instanceof Error
-            ? `${error.message} Please re-select your photo and try again.`
-            : "The export failed. Please try again.",
+        workingSize: null,
+        sourceScale: 1,
+        faces: [],
+        faceIndex: 0,
+        adjust: { ...IDENTITY_ADJUSTMENTS },
+        image: { ...NEUTRAL_ADJUSTMENTS },
+        exportResult: null,
       });
-    }
-  },
-
-  clearExport: () => {
-    const result = get().exportResult;
-    if (result) URL.revokeObjectURL(result.url);
-    set({ exportResult: null });
-  },
-
-  reset: () => {
-    const state = get();
-    state.working?.close();
-    if (state.source && state.source !== state.working) state.source.close();
-    if (state.exportResult) URL.revokeObjectURL(state.exportResult.url);
-    set({
-      status: "idle",
-      error: null,
-      file: null,
-      working: null,
-      source: null,
-      workingSize: null,
-      sourceScale: 1,
-      faces: [],
-      faceIndex: 0,
-      adjust: { ...IDENTITY_ADJUSTMENTS },
-      image: { ...NEUTRAL_ADJUSTMENTS },
-      exportResult: null,
-    });
-  },
-}));
+    },
+  };
+});

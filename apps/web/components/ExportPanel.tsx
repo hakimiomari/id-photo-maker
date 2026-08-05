@@ -5,7 +5,7 @@ import { usePhotoStore } from "../lib/store";
 
 export function ExportPanel() {
   const format = usePhotoStore((s) => s.format());
-  const solution = usePhotoStore((s) => s.solution());
+  const solution = usePhotoStore((s) => s.solution);
   const exporting = usePhotoStore((s) => s.exporting);
   const exportResult = usePhotoStore((s) => s.exportResult);
   const exportPhoto = usePhotoStore((s) => s.exportPhoto);

@@ -44,7 +44,7 @@ pnpm --filter @photomaker/web fetch:models
 
 ```bash
 pnpm test           # 109 unit tests in packages/core
-pnpm e2e            # 6 Playwright smoke tests (builds + serves the app)
+pnpm e2e            # 8 Playwright browser tests (builds + serves the app)
 pnpm typecheck
 pnpm build
 pnpm lint:privacy   # fails if any network primitive appears in packages/core
@@ -91,14 +91,32 @@ New entries start at `verification_status: "seeded"`, which makes the UI show a
 weaker claim. Flipping one to `"verified"` means a human re-read `source_url`
 and confirmed every number — do not automate it.
 
+## Gotchas
+
+**Never run `pnpm build` while `pnpm dev` is running.** They share `apps/web/.next`,
+and the build deletes the dev server's manifests mid-flight. The page keeps
+rendering but its JavaScript 500s, so the UI goes completely inert. Fix:
+`rm -rf apps/web/.next` and restart dev.
+
+**The CSP must allow `'unsafe-eval'` in development only.** Next's dev server
+compiles every module through `eval()`, so a strict CSP kills hydration silently —
+the server HTML renders fine while no event handler ever attaches. `next.config.mjs`
+adds it for dev and withholds it in production. The `is hydrated` e2e test guards
+this class of bug.
+
+**Model loading goes through `importScripts()` in the worker**, which is governed
+by `script-src`, not `connect-src`. Self-hosting the models (`fetch:models`) keeps
+everything same-origin; the jsdelivr entry in `script-src` exists only for the
+zero-config path.
+
 ## What is *not* covered by tests yet
 
-The e2e suite verifies page load, format switching, the ingest error path
-(file → worker → store → UI) and that no non-GET request is ever made. It does
-**not** yet exercise the ready state — detection, the crop overlay and export
-need a real portrait plus a ~7 MB model download. That belongs with the
-annotated fixture suite in Phase 2, and until then the crop and export paths are
-covered only by unit tests, not by a browser run.
+The e2e suite covers page load, hydration, format switching, the ingest error
+path, face detection running end to end on a dropped image, and that no non-GET
+request is ever made. It does **not** exercise the *ready* state — the crop
+overlay, manual adjust and export need a real portrait, so those paths are
+covered by unit tests only, not by a browser run. That closes with the annotated
+fixture suite in Phase 2.
 
 ## Before public launch
 
