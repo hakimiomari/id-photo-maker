@@ -1,3 +1,9 @@
+// Next's dev server compiles every module through eval() for source maps, so a
+// CSP without 'unsafe-eval' silently kills hydration in development — the page
+// renders but no event handler ever attaches. Production builds need no eval,
+// and must not be given it.
+const isDev = process.env.NODE_ENV !== "production";
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -16,7 +22,11 @@ const nextConfig = {
             value: [
               "default-src 'self'",
               // wasm-unsafe-eval is required by the MediaPipe WASM runtime (§7).
-              "script-src 'self' 'wasm-unsafe-eval' 'unsafe-inline'",
+              // jsdelivr is the zero-config fallback for the WASM loader, which
+              // the detect worker pulls in via importScripts() — importScripts
+              // is governed by script-src, not connect-src. Once models are
+              // self-hosted (pnpm fetch:models) this entry can be dropped.
+              `script-src 'self' 'wasm-unsafe-eval' 'unsafe-inline' https://cdn.jsdelivr.net${isDev ? " 'unsafe-eval'" : ""}`,
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' blob: data:",
               // Model files only. No endpoint accepts image data — by design.

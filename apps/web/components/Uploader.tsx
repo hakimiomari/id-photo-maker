@@ -67,7 +67,11 @@ export function Uploader() {
         <input
           ref={inputRef}
           type="file"
-          accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+          // Extensions as well as MIME types: macOS Finder and some Android
+          // pickers grey out files whose extension they cannot map to a listed
+          // type, which hides HEIC photos entirely. decodeImage() still rejects
+          // anything unsupported with a friendly message.
+          accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.jpg,.jpeg,.png,.webp,.heic,.heif"
           className="sr-only"
           onChange={(event) => handleFiles(event.target.files)}
         />

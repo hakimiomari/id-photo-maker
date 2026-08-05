@@ -72,6 +72,55 @@ test("rejects an unsupported file with a friendly message", async ({ page }) => 
   );
 });
 
+/**
+ * Hydration guard. A broken CSP (or any client-side crash) still renders the
+ * server HTML, so the page *looks* fine while every handler is missing and the
+ * whole app is inert. Asserting that a click reaches a real browser dialog is
+ * the cheapest proof that React actually took over.
+ */
+test("is hydrated — the button opens a real file chooser", async ({ page }) => {
+  await page.goto("/");
+  const chooser = page.waitForEvent("filechooser", { timeout: 5000 });
+  await page.getByRole("button", { name: "Choose a photo" }).click();
+  expect((await chooser).isMultiple()).toBe(false);
+});
+
+/**
+ * The detection path end to end: drop → worker → decode → MediaPipe → verdict.
+ * Needs the self-hosted model, so it skips on a checkout that has not run
+ * `pnpm --filter @photomaker/web fetch:models`.
+ */
+test("runs face detection on a dropped photo", async ({ page, request }) => {
+  const model = await request.get("/models/face_landmarker.task");
+  test.skip(!model.ok(), "Self-hosted model missing — run fetch:models");
+
+  await page.goto("/");
+  await page.evaluate(async () => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 1200;
+    canvas.height = 1600;
+    const ctx = canvas.getContext("2d")!;
+    ctx.fillStyle = "#DCC8BE";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve, "image/jpeg", 0.9),
+    );
+    const transfer = new DataTransfer();
+    transfer.items.add(new File([blob!], "flat.jpg", { type: "image/jpeg" }));
+    document
+      .querySelector(".border-dashed")!
+      .dispatchEvent(
+        new DragEvent("drop", { bubbles: true, cancelable: true, dataTransfer: transfer }),
+      );
+  });
+
+  // A flat colour field has no face, so this is the expected verdict — and it
+  // can only be reached by loading and running the model.
+  await expect(page.locator('p[role="alert"]')).toContainText("No face found", {
+    timeout: 30_000,
+  });
+});
+
 test("makes no network request carrying image data", async ({ page }) => {
   const posts: string[] = [];
   page.on("request", (request) => {

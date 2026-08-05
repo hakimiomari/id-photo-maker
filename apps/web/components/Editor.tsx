@@ -19,10 +19,10 @@ export function Editor() {
   const [area, setArea] = useState({ width: 0, height: 0 });
 
   const working = usePhotoStore((s) => s.working);
-  const adjust = usePhotoStore((s) => s.adjust);
   const image = usePhotoStore((s) => s.image);
-  const formatId = usePhotoStore((s) => s.formatId);
-  const faceIndex = usePhotoStore((s) => s.faceIndex);
+  // One subscription for the whole crop: `solution` is recomputed (and gets a
+  // new identity) on every pan, zoom, format change and face change.
+  const solution = usePhotoStore((s) => s.solution);
   const pan = usePhotoStore((s) => s.pan);
   const zoomBy = usePhotoStore((s) => s.zoomBy);
 
@@ -41,8 +41,7 @@ export function Editor() {
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
     const state = usePhotoStore.getState();
-    const solution = state.solution();
-    const head = state.head();
+    const { solution, head } = state;
     if (!canvas || !state.working || !solution || !head || area.width === 0) return;
 
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -79,7 +78,7 @@ export function Editor() {
   useEffect(() => {
     const id = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(id);
-  }, [draw, working, adjust, image, formatId, faceIndex]);
+  }, [draw, working, solution, image]);
 
   // --- gestures -----------------------------------------------------------
   const pointers = useRef(new Map<number, { x: number; y: number }>());
@@ -87,7 +86,7 @@ export function Editor() {
 
   const scaleOf = useCallback(() => {
     const state = usePhotoStore.getState();
-    const solution = state.solution();
+    const solution = state.solution;
     if (!solution || area.width === 0) return 1;
     return computeFrame(area, state.format()).width / solution.rect.width;
   }, [area]);

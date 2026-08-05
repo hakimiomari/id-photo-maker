@@ -92,15 +92,7 @@ export async function decodeImage(file: File | Blob): Promise<DecodedImage> {
 
   let bitmap: ImageBitmap;
   try {
-    // Always decode unrotated and apply the transform ourselves. Engines
-    // disagree about the default value of `imageOrientation` (the HTML spec
-    // changed it to "from-image"), and guessing wrong either double-rotates or
-    // never rotates. Explicit "none" is honoured everywhere the option exists,
-    // and matches legacy behaviour where it doesn't.
-    bitmap = await applyOrientation(
-      await createImageBitmap(source, { imageOrientation: "none" }),
-      orientation,
-    );
+    bitmap = await decodeUpright(source, orientation);
   } catch (cause) {
     throw new IngestError(
       "decode-failed",
@@ -123,6 +115,30 @@ export async function decodeImage(file: File | Blob): Promise<DecodedImage> {
     height: bitmap.height,
     orientation,
   };
+}
+
+/**
+ * Decode to an upright bitmap.
+ *
+ * Engines disagree about `imageOrientation`: the HTML spec changed the default
+ * to "from-image" and dropped the legacy "none" value, but Chrome still accepts
+ * "none". Rather than guess — a wrong guess either double-rotates the photo or
+ * never rotates it — we ask for "none" and rotate ourselves, and fall back to
+ * the engine's own EXIF handling if it rejects the value.
+ */
+async function decodeUpright(
+  source: Blob,
+  orientation: ExifOrientation,
+): Promise<ImageBitmap> {
+  try {
+    const raw = await createImageBitmap(source, { imageOrientation: "none" });
+    return await applyOrientation(raw, orientation);
+  } catch (cause) {
+    if (!(cause instanceof TypeError)) throw cause;
+    // The engine rejected the enum value; its default is "from-image", so the
+    // rotation is already baked in and applying ours would double it.
+    return createImageBitmap(source);
+  }
 }
 
 /** Bake the EXIF orientation into the pixels. No-op for orientation 1. */

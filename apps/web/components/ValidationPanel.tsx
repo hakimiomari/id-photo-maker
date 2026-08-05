@@ -22,17 +22,11 @@ const LEVEL_HEADLINE: Record<ValidationLevel, string> = {
 };
 
 export function ValidationPanel() {
-  const adjust = usePhotoStore((s) => s.adjust);
-  const formatId = usePhotoStore((s) => s.formatId);
-  const faceIndex = usePhotoStore((s) => s.faceIndex);
-  const solution = usePhotoStore((s) => s.solution());
+  // `solution` is derived state, so its identity changes whenever the crop,
+  // format or selected face does — no extra subscriptions needed.
+  const solution = usePhotoStore((s) => s.solution);
   const format = usePhotoStore((s) => s.format());
   const resetAdjust = usePhotoStore((s) => s.resetAdjust);
-
-  // adjust/formatId/faceIndex are read so the panel re-renders on every change.
-  void adjust;
-  void formatId;
-  void faceIndex;
 
   if (!solution) return null;
 
