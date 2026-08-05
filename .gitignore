@@ -1,0 +1,13 @@
+node_modules/
+dist/
+.next/
+out/
+.turbo/
+coverage/
+*.tsbuildinfo
+.DS_Store
+.env*.local
+playwright-report/
+test-results/
+apps/web/public/models/*
+!apps/web/public/models/.gitkeep

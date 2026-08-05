@@ -1,0 +1,50 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-canvas text-ink antialiased;
+  }
+
+  /* Touch targets stay at least 44px (§8.2). */
+  button,
+  [role="button"] {
+    touch-action: manipulation;
+  }
+
+  :focus-visible {
+    @apply outline-none ring-2 ring-accent ring-offset-2 ring-offset-canvas;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg px-4 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .btn-primary {
+    @apply btn bg-accent text-white hover:bg-accent-hover;
+  }
+
+  .btn-secondary {
+    @apply btn border border-line bg-surface text-ink hover:bg-canvas;
+  }
+
+  .card {
+    @apply rounded-card border border-line bg-surface shadow-card;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "name": "photomaker",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@11.20.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @photomaker/web dev",
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "test:core": "pnpm --filter @photomaker/core test",
+    "e2e": "pnpm --filter @photomaker/web e2e",
+    "lint:privacy": "node scripts/check-no-network.mjs"
+  },
+  "devDependencies": {
+    "turbo": "^2.3.3",
+    "typescript": "^5.7.2"
+  }
+}
