@@ -22,8 +22,12 @@ export interface DetectRequest {
 export interface DetectSuccess {
   id: number;
   ok: true;
-  /** Full-resolution bitmap, kept for export. Omitted when it *is* the working copy. */
-  source?: ImageBitmap;
+  /**
+   * Full-resolution bitmap, kept for export. Always a distinct object from
+   * `working`: export transfers this one, which would otherwise detach the
+   * preview the editor is drawing.
+   */
+  source: ImageBitmap;
   working: ImageBitmap;
   workingSize: Size;
   sourceSize: Size;
