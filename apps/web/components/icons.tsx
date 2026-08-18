@@ -110,6 +110,32 @@ export function IconReset(props: IconProps) {
   );
 }
 
+export function IconSun(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8" />
+    </Svg>
+  );
+}
+
+export function IconMoon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M20.5 14.5A8.5 8.5 0 0 1 9.5 3.5a8.5 8.5 0 1 0 11 11Z" />
+    </Svg>
+  );
+}
+
+export function IconMonitor(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <rect x="3" y="4.5" width="18" height="13" rx="2" />
+      <path d="M9 21h6M12 17.5V21" />
+    </Svg>
+  );
+}
+
 /** App mark: an ID-photo frame with head-height guides. */
 export function LogoMark({ className }: { className?: string }) {
   return (

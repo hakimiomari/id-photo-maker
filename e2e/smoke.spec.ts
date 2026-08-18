@@ -155,6 +155,30 @@ test("unknown format slugs 404", async ({ page }) => {
   expect(response?.status()).toBe(404);
 });
 
+test("theme toggle: dark applies, persists, and system follows the OS", async ({ page }) => {
+  await page.emulateMedia({ colorScheme: "light" });
+  await page.goto("/");
+  const html = page.locator("html");
+
+  // Explicit dark wins regardless of OS preference…
+  await page.getByRole("button", { name: "Dark", exact: true }).click();
+  await expect(html).toHaveClass(/dark/);
+
+  // …and survives a reload via the pre-paint script (no flash of light mode).
+  await page.reload();
+  await expect(html).toHaveClass(/dark/);
+
+  // Back to light.
+  await page.getByRole("button", { name: "Light", exact: true }).click();
+  await expect(html).not.toHaveClass(/dark/);
+
+  // System mode follows the emulated OS preference.
+  await page.getByRole("button", { name: "System", exact: true }).click();
+  await expect(html).not.toHaveClass(/dark/);
+  await page.emulateMedia({ colorScheme: "dark" });
+  await expect(html).toHaveClass(/dark/);
+});
+
 test("makes no network request carrying image data", async ({ page }) => {
   const posts: string[] = [];
   page.on("request", (request) => {
