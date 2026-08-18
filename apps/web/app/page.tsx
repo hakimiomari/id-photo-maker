@@ -1,10 +1,12 @@
 "use client";
 
-import { formatLabel } from "@photomaker/core";
+import { useEffect } from "react";
+import { findFormat, formatLabel } from "@photomaker/core";
 import { AdjustPanel } from "../components/AdjustPanel";
 import { Editor } from "../components/Editor";
 import { ExportPanel } from "../components/ExportPanel";
 import { FormatPicker } from "../components/FormatPicker";
+import { SheetPanel } from "../components/SheetPanel";
 import { Uploader } from "../components/Uploader";
 import { ValidationPanel } from "../components/ValidationPanel";
 import { IconCheck, IconLock, LogoMark } from "../components/icons";
@@ -24,6 +26,12 @@ export default function Home() {
   const reset = usePhotoStore((s) => s.reset);
   const ready = status === "ready";
   const stageIndex = STEPS.findIndex((s) => s.id === stage);
+
+  // SEO pages deep-link into the editor with ?format=<id> (§8.3).
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get("format");
+    if (id && findFormat(id)) usePhotoStore.getState().setFormat(id);
+  }, []);
 
   return (
     <main id="main" className="mx-auto max-w-6xl px-4 pb-16 pt-6 sm:px-6 sm:pt-8">
@@ -129,6 +137,9 @@ export default function Home() {
               </section>
               <section className="card p-5">
                 <ExportPanel />
+              </section>
+              <section className="card p-5">
+                <SheetPanel />
               </section>
             </>
           )}
