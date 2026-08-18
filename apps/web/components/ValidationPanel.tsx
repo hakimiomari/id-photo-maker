@@ -2,24 +2,36 @@
 
 import type { ValidationLevel } from "@photomaker/core";
 import { usePhotoStore } from "../lib/store";
+import { IconAlert, IconCheck, IconReset, IconX } from "./icons";
 
-const LEVEL_STYLES: Record<ValidationLevel, string> = {
-  ok: "bg-ok-soft text-ok border-ok/20",
-  warn: "bg-warn-soft text-warn border-warn/20",
-  error: "bg-danger-soft text-danger border-danger/20",
+const BANNER: Record<ValidationLevel, string> = {
+  ok: "border-ok-border bg-ok-soft text-ok",
+  warn: "border-warn-border bg-warn-soft text-warn",
+  error: "border-danger-border bg-danger-soft text-danger",
 };
 
-const LEVEL_ICON: Record<ValidationLevel, string> = {
-  ok: "✓",
-  warn: "!",
-  error: "×",
+const DOT: Record<ValidationLevel, string> = {
+  ok: "bg-ok",
+  warn: "bg-warn",
+  error: "bg-danger",
 };
 
-const LEVEL_HEADLINE: Record<ValidationLevel, string> = {
+const HEADLINE: Record<ValidationLevel, string> = {
   ok: "Ready to download",
   warn: "Usable, with warnings",
   error: "Not within spec",
 };
+
+function LevelGlyph({ level }: { level: ValidationLevel }) {
+  const Icon = level === "ok" ? IconCheck : level === "warn" ? IconAlert : IconX;
+  return (
+    <span
+      className={`flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full text-white ${DOT[level]}`}
+    >
+      <Icon className="h-3 w-3" strokeWidth={2.75} />
+    </span>
+  );
+}
 
 export function ValidationPanel() {
   // `solution` is derived state, so its identity changes whenever the crop,
@@ -31,43 +43,37 @@ export function ValidationPanel() {
   if (!solution) return null;
 
   return (
-    <section aria-label="Photo checks" className="space-y-3">
+    <section aria-label="Photo checks" className="space-y-4">
+      <p className="eyebrow">Checks</p>
+
       <div
-        className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium ${LEVEL_STYLES[solution.level]}`}
         role="status"
         aria-live="polite"
+        className={`flex items-center gap-2.5 rounded-control border px-3.5 py-2.5 text-sm font-semibold ${BANNER[solution.level]}`}
       >
-        <span aria-hidden className="text-base leading-none">
-          {LEVEL_ICON[solution.level]}
-        </span>
-        {LEVEL_HEADLINE[solution.level]}
+        <LevelGlyph level={solution.level} />
+        {HEADLINE[solution.level]}
       </div>
 
-      <ul className="space-y-1.5 text-sm">
+      <ul className="space-y-2.5">
         {solution.validations.map((item) => (
-          <li key={item.id} className="flex gap-2">
-            <span
-              aria-hidden
-              className={
-                item.level === "ok"
-                  ? "text-ok"
-                  : item.level === "warn"
-                    ? "text-warn"
-                    : "text-danger"
-              }
-            >
-              {LEVEL_ICON[item.level]}
+          <li key={item.id} className="flex items-start gap-2.5">
+            <span className="mt-px">
+              <LevelGlyph level={item.level} />
             </span>
-            <span className="text-ink-muted">{item.message}</span>
+            <span className="text-[13px] leading-snug text-ink-muted">
+              {item.message}
+            </span>
           </li>
         ))}
       </ul>
 
       <button type="button" className="btn-secondary w-full" onClick={resetAdjust}>
+        <IconReset className="h-4 w-4" />
         Reset to auto crop
       </button>
 
-      <p className="text-xs text-ink-faint">
+      <p className="border-t border-line pt-3 text-xs leading-relaxed text-ink-faint">
         Spec last checked {format.verified_date}
         {format.verification_status === "seeded" && " (not yet re-verified)"}.
         Always confirm the requirements with the issuing authority.

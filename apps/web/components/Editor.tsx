@@ -163,7 +163,7 @@ export function Editor() {
   return (
     <div
       ref={containerRef}
-      className="relative h-[52vh] min-h-[320px] w-full overflow-hidden rounded-card bg-[#EDEFF3] sm:h-[62vh]"
+      className="relative h-[52vh] min-h-[320px] w-full overflow-hidden rounded-card bg-[#E9ECF1] shadow-card ring-1 ring-line sm:h-[62vh]"
     >
       <canvas
         ref={canvasRef}
@@ -190,8 +190,8 @@ function FacePicker() {
   if (faces.length < 2) return null;
 
   return (
-    <div className="absolute inset-x-0 bottom-0 flex flex-wrap items-center justify-center gap-2 bg-surface/90 p-2 text-xs">
-      <span className="text-ink-muted">
+    <div className="absolute inset-x-0 bottom-0 flex flex-wrap items-center justify-center gap-2 border-t border-line bg-surface/90 p-2.5 text-xs backdrop-blur-sm">
+      <span className="font-medium text-ink-muted">
         {faces.length} faces found — pick the subject:
       </span>
       {faces.map((_, index) => (
@@ -199,10 +199,10 @@ function FacePicker() {
           key={index}
           type="button"
           onClick={() => selectFace(index)}
-          className={`rounded-md px-3 py-1.5 font-medium ${
+          className={`rounded-control px-3 py-1.5 font-medium transition-colors duration-150 ${
             index === faceIndex
               ? "bg-accent text-white"
-              : "border border-line bg-surface text-ink"
+              : "border border-line-strong bg-surface text-ink hover:bg-canvas"
           }`}
         >
           Face {index + 1}

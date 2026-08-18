@@ -9,6 +9,12 @@
 
   body {
     @apply bg-canvas text-ink antialiased;
+    /* Inter: contextual alternates + open digits read better at small sizes. */
+    font-feature-settings: "cv05", "cv11";
+  }
+
+  ::selection {
+    @apply bg-accent-soft text-accent;
   }
 
   /* Touch targets stay at least 44px (§8.2). */
@@ -20,23 +26,58 @@
   :focus-visible {
     @apply outline-none ring-2 ring-accent ring-offset-2 ring-offset-canvas;
   }
+
+  kbd {
+    @apply inline-block rounded border border-line-strong bg-surface px-1.5 py-0.5 align-middle text-[10px] font-semibold leading-none text-ink-muted shadow-[0_1px_0_theme(colors.line.strong)];
+  }
 }
 
 @layer components {
   .btn {
-    @apply inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg px-4 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex min-h-[44px] select-none items-center justify-center gap-2 rounded-control px-4 text-sm font-medium transition-all duration-150 ease-swift active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100;
   }
 
   .btn-primary {
-    @apply btn bg-accent text-white hover:bg-accent-hover;
+    @apply btn bg-accent text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_1px_2px_rgba(15,23,42,0.2)] hover:bg-accent-hover;
   }
 
   .btn-secondary {
-    @apply btn border border-line bg-surface text-ink hover:bg-canvas;
+    @apply btn border border-line-strong bg-surface text-ink shadow-[0_1px_2px_rgba(15,23,42,0.05)] hover:border-ink-faint/40 hover:bg-canvas;
+  }
+
+  .btn-ghost {
+    @apply btn text-ink-muted hover:bg-line/40 hover:text-ink;
   }
 
   .card {
     @apply rounded-card border border-line bg-surface shadow-card;
+  }
+
+  /* Section label: small caps eyebrow used to head every panel. */
+  .eyebrow {
+    @apply text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-faint;
+  }
+
+  /* Range inputs: custom track (filled via --fill set inline) + white thumb. */
+  .slider {
+    @apply h-1.5 w-full cursor-pointer appearance-none rounded-full;
+    background: linear-gradient(
+      to right,
+      theme("colors.accent.DEFAULT") var(--fill, 50%),
+      theme("colors.line.DEFAULT") var(--fill, 50%)
+    );
+  }
+
+  .slider::-webkit-slider-thumb {
+    @apply h-[18px] w-[18px] appearance-none rounded-full border border-line-strong bg-surface shadow-thumb transition-transform duration-150;
+  }
+
+  .slider::-webkit-slider-thumb:hover {
+    transform: scale(1.1);
+  }
+
+  .slider::-moz-range-thumb {
+    @apply h-[18px] w-[18px] rounded-full border border-line-strong bg-surface shadow-thumb;
   }
 }
 

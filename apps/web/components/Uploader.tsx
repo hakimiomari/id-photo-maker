@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { usePhotoStore } from "../lib/store";
+import { IconAlert, IconCamera, IconLock, IconUpload } from "./icons";
 
 export function Uploader() {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -10,6 +11,7 @@ export function Uploader() {
   const loadFile = usePhotoStore((s) => s.loadFile);
   const status = usePhotoStore((s) => s.status);
   const error = usePhotoStore((s) => s.error);
+  const loading = status === "loading";
 
   const handleFiles = (files: FileList | null) => {
     const file = files?.[0];
@@ -18,6 +20,7 @@ export function Uploader() {
 
   return (
     <div className="space-y-3">
+      {/* Playwright's detection test dispatches its drop on `.border-dashed`. */}
       <div
         onDragOver={(event) => {
           event.preventDefault();
@@ -29,38 +32,57 @@ export function Uploader() {
           setDragging(false);
           handleFiles(event.dataTransfer.files);
         }}
-        className={`flex flex-col items-center justify-center gap-3 rounded-card border-2 border-dashed p-8 text-center transition-colors ${
-          dragging ? "border-accent bg-accent-soft" : "border-line bg-surface"
+        className={`flex min-h-[380px] flex-col items-center justify-center gap-4 rounded-card border-2 border-dashed px-6 py-12 text-center transition-all duration-200 ease-swift sm:min-h-[440px] ${
+          dragging
+            ? "border-accent bg-accent-soft/70 shadow-lift"
+            : "border-line-strong bg-surface shadow-card"
         }`}
       >
-        <p className="text-base font-medium">
-          {status === "loading" ? "Reading your photo…" : "Add your photo"}
-        </p>
-        <p className="max-w-sm text-sm text-ink-muted">
-          JPEG, PNG, WebP or HEIC. Face the camera, plain background, whole head
-          visible with some space above it.
-        </p>
+        <span
+          className={`flex h-14 w-14 items-center justify-center rounded-full transition-colors duration-200 ${
+            dragging ? "bg-accent text-white" : "bg-accent-soft text-accent"
+          }`}
+        >
+          <IconUpload className="h-6 w-6" />
+        </span>
 
-        <div className="flex flex-wrap items-center justify-center gap-2">
+        <div className="space-y-1.5">
+          <p className="text-base font-semibold tracking-tight">
+            {loading
+              ? "Reading your photo…"
+              : dragging
+                ? "Drop it here"
+                : "Add your photo"}
+          </p>
+          <p className="mx-auto max-w-sm text-balance text-sm leading-relaxed text-ink-muted">
+            JPEG, PNG, WebP or HEIC. Face the camera, plain background, whole
+            head visible with some space above it.
+          </p>
+        </div>
+
+        <div className="mt-1 flex flex-wrap items-center justify-center gap-2.5">
           <button
             type="button"
-            className="btn-primary"
+            className="btn-primary min-w-40"
             onClick={() => inputRef.current?.click()}
-            disabled={status === "loading"}
+            disabled={loading}
           >
+            <IconUpload className="h-4 w-4" />
             Choose a photo
           </button>
           <button
             type="button"
             className="btn-secondary sm:hidden"
             onClick={() => cameraRef.current?.click()}
-            disabled={status === "loading"}
+            disabled={loading}
           >
+            <IconCamera className="h-4 w-4" />
             Take a photo
           </button>
         </div>
 
-        <p className="text-xs text-ink-faint">
+        <p className="mt-2 inline-flex items-center gap-1.5 text-xs text-ink-faint">
+          <IconLock className="h-3.5 w-3.5" />
           Your photo is processed on your device and never uploaded.
         </p>
 
@@ -88,8 +110,11 @@ export function Uploader() {
       {status === "error" && error && (
         <p
           role="alert"
-          className="rounded-lg border border-danger/20 bg-danger-soft px-3 py-2 text-sm text-danger"
+          className="flex items-start gap-2.5 rounded-control border border-danger-border bg-danger-soft px-3.5 py-3 text-sm leading-relaxed text-danger"
         >
+          <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-danger text-white">
+            <IconAlert className="h-3 w-3" strokeWidth={2.5} />
+          </span>
           {error}
         </p>
       )}
