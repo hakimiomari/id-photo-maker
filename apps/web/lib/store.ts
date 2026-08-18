@@ -219,7 +219,7 @@ export const usePhotoStore = create<PhotoState>((set, get) => {
         }
         if (response.faces.length === 0) {
           response.working.close();
-          response.source?.close();
+          response.source.close();
           set({
             status: "error",
             error:
@@ -231,7 +231,7 @@ export const usePhotoStore = create<PhotoState>((set, get) => {
         setDerived({
           status: "ready",
           working: response.working,
-          source: response.source ?? response.working,
+          source: response.source,
           workingSize: response.workingSize,
           sourceScale: response.sourceScale,
           faces: response.faces,
@@ -286,6 +286,10 @@ export const usePhotoStore = create<PhotoState>((set, get) => {
       const solution = state.solution;
       const source = state.source;
       if (!solution || !source) return;
+      // The source bitmap is transferred into the encode worker and only comes
+      // back with the response. A second export while one is in flight would
+      // try to transfer an already-detached object and throw.
+      if (state.exporting) return;
 
       const format = state.format();
       const digitalSpec = options.digital ? format.digital_spec : undefined;
