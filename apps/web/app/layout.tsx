@@ -1,5 +1,17 @@
 import type { Metadata, Viewport } from "next";
+import { Inter } from "next/font/google";
 import "./globals.css";
+
+/**
+ * next/font downloads Inter at build time and serves it same-origin — no
+ * runtime request to Google, which keeps the CSP strict and the privacy
+ * claim literal.
+ */
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-sans",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "ID Photo Maker — passport & ID photos in your browser",
@@ -11,7 +23,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#F7F8FA",
+  themeColor: "#F5F6F8",
 };
 
 export default function RootLayout({
@@ -20,7 +32,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" className={inter.variable}>
       {/*
         Browser extensions (Grammarly, password managers, translators) inject
         attributes into <body> before React hydrates, which reads as a mismatch.
