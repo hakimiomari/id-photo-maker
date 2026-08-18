@@ -18,7 +18,8 @@
   "dependencies": {
     "@mediapipe/tasks-vision": "^0.10.20",
     "zod": "^3.24.1",
-    "heic2any": "^0.0.4"
+    "heic2any": "^0.0.4",
+    "pdf-lib": "^1.17.1"
   },
   "devDependencies": {
     "typescript": "^5.7.2",
