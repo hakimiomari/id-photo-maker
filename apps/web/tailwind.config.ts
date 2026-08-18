@@ -1,36 +1,58 @@
 import type { Config } from "tailwindcss";
 
 /**
- * Design tokens (spec §8.2): a "documents" product — calm neutrals, one deep
- * blue accent, semantic colours reserved for validation state. Text colours
- * hold WCAG AA on their intended surfaces: ink.muted ≥ 7:1 and ink.faint
- * ≥ 4.5:1 on white; the *.strong pairs ≥ 4.5:1 on their soft backgrounds.
+ * Design tokens (spec §8.2), themed via CSS variables: the palette lives in
+ * globals.css as RGB triplets on :root (light) and .dark, so every component
+ * adapts without per-element dark: variants. The <alpha-value> plumbing keeps
+ * Tailwind's opacity modifiers (bg-surface/90 etc.) working.
+ *
+ * Text contrast holds WCAG AA on intended surfaces in both themes; anything
+ * that sits on an accent/semantic fill uses text-surface, which resolves to
+ * white in light mode and near-black in dark mode.
  */
+const token = (name: string) => `rgb(var(--c-${name}) / <alpha-value>)`;
+
 const config: Config = {
+  darkMode: "selector",
   content: ["./app/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}"],
   theme: {
     extend: {
       colors: {
-        canvas: "#F5F6F8",
-        surface: "#FFFFFF",
+        canvas: token("canvas"),
+        surface: token("surface"),
+        /** The crop area behind the photo — stays neutral grey in both themes
+         *  so photo colours read correctly (§8.2). */
+        editor: token("editor"),
         ink: {
-          DEFAULT: "#131A22",
-          muted: "#49545F",
-          faint: "#6E7A87",
+          DEFAULT: token("ink"),
+          muted: token("ink-muted"),
+          faint: token("ink-faint"),
         },
         line: {
-          DEFAULT: "#E5E8EE",
-          strong: "#D2D8E1",
+          DEFAULT: token("line"),
+          strong: token("line-strong"),
         },
         accent: {
-          DEFAULT: "#1D4ED8",
-          hover: "#1941B8",
-          soft: "#EEF3FE",
-          border: "#B9CCF4",
+          DEFAULT: token("accent"),
+          hover: token("accent-hover"),
+          soft: token("accent-soft"),
+          border: token("accent-border"),
         },
-        ok: { DEFAULT: "#067647", soft: "#E9F6EF", border: "#B5E2CB" },
-        warn: { DEFAULT: "#8A5A00", soft: "#FCF3E1", border: "#EED9A8" },
-        danger: { DEFAULT: "#B3261E", soft: "#FCEDEB", border: "#F2C4C0" },
+        ok: {
+          DEFAULT: token("ok"),
+          soft: token("ok-soft"),
+          border: token("ok-border"),
+        },
+        warn: {
+          DEFAULT: token("warn"),
+          soft: token("warn-soft"),
+          border: token("warn-border"),
+        },
+        danger: {
+          DEFAULT: token("danger"),
+          soft: token("danger-soft"),
+          border: token("danger-border"),
+        },
       },
       fontFamily: {
         sans: ["var(--font-sans)", "system-ui", "sans-serif"],

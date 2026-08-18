@@ -2,7 +2,13 @@
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { usePhotoStore } from "../lib/store";
-import { computeFrame, drawFrame, drawOverlay } from "../lib/overlay";
+import {
+  computeFrame,
+  drawFrame,
+  drawOverlay,
+  OVERLAY_DARK,
+  OVERLAY_LIGHT,
+} from "../lib/overlay";
 
 const KEY_PAN = 4;
 const KEY_PAN_FAST = 16;
@@ -71,14 +77,24 @@ export function Editor() {
     );
     ctx.restore();
 
-    drawFrame(ctx, frame, area);
-    drawOverlay({ ctx, frame, format, solution, head, k });
+    const palette = document.documentElement.classList.contains("dark")
+      ? OVERLAY_DARK
+      : OVERLAY_LIGHT;
+    drawFrame(ctx, frame, area, palette);
+    drawOverlay({ ctx, frame, format, solution, head, k, palette });
   }, [area]);
 
   useEffect(() => {
     const id = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(id);
   }, [draw, working, solution, image]);
+
+  // The guides are canvas paint, not CSS — repaint when the theme flips.
+  useEffect(() => {
+    const onTheme = () => requestAnimationFrame(draw);
+    window.addEventListener("themechange", onTheme);
+    return () => window.removeEventListener("themechange", onTheme);
+  }, [draw]);
 
   // --- gestures -----------------------------------------------------------
   const pointers = useRef(new Map<number, { x: number; y: number }>());
@@ -163,7 +179,7 @@ export function Editor() {
   return (
     <div
       ref={containerRef}
-      className="relative h-[52vh] min-h-[320px] w-full overflow-hidden rounded-card bg-[#E9ECF1] shadow-card ring-1 ring-line sm:h-[62vh]"
+      className="relative h-[52vh] min-h-[320px] w-full overflow-hidden rounded-card bg-editor shadow-card ring-1 ring-line sm:h-[62vh]"
     >
       <canvas
         ref={canvasRef}
@@ -201,7 +217,7 @@ function FacePicker() {
           onClick={() => selectFace(index)}
           className={`rounded-control px-3 py-1.5 font-medium transition-colors duration-150 ${
             index === faceIndex
-              ? "bg-accent text-white"
+              ? "bg-accent text-surface"
               : "border border-line-strong bg-surface text-ink hover:bg-canvas"
           }`}
         >
