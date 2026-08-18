@@ -19,3 +19,8 @@ export * from "./render/pipeline";
 export * from "./export/encode";
 export * from "./export/jpegDensity";
 export * from "./export/pngPhys";
+
+export * from "./sheet/papers";
+export * from "./sheet/tiler";
+export * from "./sheet/render";
+export * from "./sheet/pdf";
