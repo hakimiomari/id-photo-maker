@@ -1,16 +1,24 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { exportPixelSize } from "@photomaker/core";
 import { usePhotoStore } from "../lib/store";
-import { IconAlert, IconCheck, IconDownload } from "./icons";
+import { formatBytes } from "../lib/bytes";
+import { ExportResultCard } from "./ResultCard";
+import { IconAlert, IconDownload } from "./icons";
 
 export function ExportPanel() {
   const format = usePhotoStore((s) => s.format());
   const solution = usePhotoStore((s) => s.solution);
   const exporting = usePhotoStore((s) => s.exporting);
-  const exportResult = usePhotoStore((s) => s.exportResult);
   const exportPhoto = usePhotoStore((s) => s.exportPhoto);
-  const clearExport = usePhotoStore((s) => s.clearExport);
+
+  // Same pattern as the sheet panel: chips select the file type, one button acts.
+  const [mimeType, setMimeType] = useState<"image/jpeg" | "image/png">("image/jpeg");
+  const [pending, setPending] = useState<"photo" | "digital" | null>(null);
+  useEffect(() => {
+    if (!exporting) setPending(null);
+  }, [exporting]);
 
   if (!solution) return null;
 
@@ -36,36 +44,60 @@ export function ExportPanel() {
         </div>
       </dl>
 
-      <div className="flex gap-2">
-        <button
-          type="button"
-          className="btn-primary flex-1"
-          disabled={exporting || blocked}
-          onClick={() => void exportPhoto({ mimeType: "image/jpeg" })}
-        >
-          <IconDownload className="h-4 w-4" />
-          {exporting ? "Preparing…" : "Download JPEG"}
-        </button>
-        <button
-          type="button"
-          className="btn-secondary"
-          disabled={exporting || blocked}
-          onClick={() => void exportPhoto({ mimeType: "image/png" })}
-        >
-          PNG
-        </button>
+      <div className="flex flex-wrap gap-1.5" role="group" aria-label="File type">
+        {(
+          [
+            { id: "image/jpeg", label: "JPEG · recommended" },
+            { id: "image/png", label: "PNG" },
+          ] as const
+        ).map(({ id, label }) => {
+          const selected = mimeType === id;
+          return (
+            <button
+              key={id}
+              type="button"
+              aria-pressed={selected}
+              onClick={() => setMimeType(id)}
+              className={`rounded-control border px-3 py-2 text-xs font-medium transition-colors duration-150 ${
+                selected
+                  ? "border-accent bg-accent-soft text-accent"
+                  : "border-line bg-surface text-ink-muted hover:border-line-strong"
+              }`}
+            >
+              {label}
+            </button>
+          );
+        })}
       </div>
+
+      <button
+        type="button"
+        className="btn-primary w-full"
+        disabled={exporting || blocked}
+        onClick={() => {
+          setPending("photo");
+          void exportPhoto({ mimeType });
+        }}
+      >
+        <IconDownload className="h-4 w-4" />
+        {pending === "photo"
+          ? "Preparing…"
+          : `Download photo (${mimeType === "image/png" ? "PNG" : "JPEG"})`}
+      </button>
 
       {format.digital_spec && (
         <button
           type="button"
           className="btn-secondary w-full"
           disabled={exporting || blocked}
-          onClick={() => void exportPhoto({ digital: true })}
+          onClick={() => {
+            setPending("digital");
+            void exportPhoto({ digital: true });
+          }}
         >
-          Online-application file · {format.digital_spec.width_px} ×{" "}
-          {format.digital_spec.height_px} px, max{" "}
-          {Math.round(format.digital_spec.max_bytes / 1024)} KB
+          {pending === "digital"
+            ? "Preparing…"
+            : `Online-application file · ${format.digital_spec.width_px} × ${format.digital_spec.height_px} px, max ${formatBytes(format.digital_spec.max_bytes)}`}
         </button>
       )}
 
@@ -78,38 +110,7 @@ export function ExportPanel() {
         </p>
       )}
 
-      {exportResult && (
-        <div className="space-y-3 rounded-control border border-ok-border bg-ok-soft p-4">
-          <p className="flex items-center gap-2 text-sm font-semibold text-ok">
-            <span className="flex h-[18px] w-[18px] items-center justify-center rounded-full bg-ok text-white">
-              <IconCheck className="h-3 w-3" strokeWidth={2.75} />
-            </span>
-            Your photo is ready.
-          </p>
-          <p className="tabular-nums text-xs text-ink-muted">
-            {exportResult.width} × {exportResult.height} px ·{" "}
-            {exportResult.dpi} DPI · {(exportResult.bytes / 1024).toFixed(0)} KB
-          </p>
-          <div className="flex flex-col gap-2">
-            <a
-              className="btn-primary"
-              href={exportResult.url}
-              download={exportResult.filename}
-            >
-              <IconDownload className="h-4 w-4" />
-              Save {exportResult.filename}
-            </a>
-            <button type="button" className="btn-ghost" onClick={clearExport}>
-              Keep editing
-            </button>
-          </div>
-          <p className="text-xs leading-relaxed text-ink-muted">
-            Printing at a drugstore: the file carries its physical size, so
-            choose “actual size” / “no scaling” when printing. A print-sheet
-            layout (6 photos on 10 × 15 cm) is coming in the next release.
-          </p>
-        </div>
-      )}
+      <ExportResultCard kinds={["print", "digital"]} />
     </section>
   );
 }

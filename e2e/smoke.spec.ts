@@ -121,6 +121,31 @@ test("runs face detection on a dropped photo", async ({ page, request }) => {
   });
 });
 
+test("SEO page renders the spec and deep-links into the editor", async ({ page }) => {
+  await page.goto("/us-passport-photo");
+
+  await expect(
+    page.getByRole("heading", { level: 1, name: /US passport \/ visa photo/ }),
+  ).toBeVisible();
+  // The spec table carries the registry's numbers.
+  await expect(page.getByText("51 × 51 mm").first()).toBeVisible();
+  await expect(page.getByText("Official requirements")).toBeVisible();
+  // FAQ JSON-LD is embedded for search engines.
+  const jsonLd = await page.locator('script[type="application/ld+json"]').textContent();
+  expect(JSON.parse(jsonLd!)["@type"]).toBe("FAQPage");
+
+  // The CTA opens the editor with the format preselected.
+  await page.getByRole("link", { name: "Open in the editor" }).click();
+  await expect(
+    page.getByRole("heading", { name: /US passport \/ visa · 51 × 51 mm/ }),
+  ).toBeVisible();
+});
+
+test("unknown format slugs 404", async ({ page }) => {
+  const response = await page.goto("/klingon-passport-photo");
+  expect(response?.status()).toBe(404);
+});
+
 test("makes no network request carrying image data", async ({ page }) => {
   const posts: string[] = [];
   page.on("request", (request) => {

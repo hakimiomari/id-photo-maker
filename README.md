@@ -15,12 +15,11 @@ enforced in CI (`pnpm lint:privacy`), not just promised.
 |---|---|---|
 | 0 | Monorepo scaffold, format registry + schema, CI | ✅ done |
 | 1 | Ingest → detect → crop solver → adjust UI → JPEG/PNG export **with DPI metadata** | ✅ done |
-| 2 | Print sheet + PDF, SEO pages, PWA/offline, full format buildout | ⬜ next |
+| 2 | Print sheet + PDF, SEO pages, PWA/offline, format buildout (14 formats) | ✅ done |
 | 3 | Background removal (ONNX), mask-refined crown detection | ⬜ |
 | 4 | Compliance pre-check, camera capture, batch mode, i18n, Pro tier | ⬜ |
 
-`packages/core/src/segment/` and `packages/core/src/sheet/` do not exist yet;
-they arrive with Phases 3 and 2 respectively.
+`packages/core/src/segment/` does not exist yet; it arrives with Phase 3.
 
 ## Getting started
 
@@ -43,8 +42,8 @@ pnpm --filter @photomaker/web fetch:models
 ## Commands
 
 ```bash
-pnpm test           # 109 unit tests in packages/core
-pnpm e2e            # 8 Playwright browser tests (builds + serves the app)
+pnpm test           # 129 unit tests in packages/core
+pnpm e2e            # 11 Playwright browser tests (builds + serves the app)
 pnpm typecheck
 pnpm build
 pnpm lint:privacy   # fails if any network primitive appears in packages/core
@@ -56,6 +55,7 @@ pnpm lint:privacy   # fails if any network primitive appears in packages/core
 packages/core/          @photomaker/core — framework-agnostic TypeScript
   src/geometry/         crop solver + unit conversions  ← the heart of the product
   src/formats/          formats.json registry + zod schema
+  src/sheet/            print-sheet tiler, sheet renderer, PDF builder, papers
   src/ingest/           decode, EXIF orientation, downscale, canvas helpers
   src/detect/           MediaPipe wrapper, chin/crown estimation
   src/render/           canvas render pipeline
@@ -109,14 +109,14 @@ by `script-src`, not `connect-src`. Self-hosting the models (`fetch:models`) kee
 everything same-origin; the jsdelivr entry in `script-src` exists only for the
 zero-config path.
 
-## What is *not* covered by tests yet
+## Test coverage notes
 
-The e2e suite covers page load, hydration, format switching, the ingest error
-path, face detection running end to end on a dropped image, and that no non-GET
-request is ever made. It does **not** exercise the *ready* state — the crop
-overlay, manual adjust and export need a real portrait, so those paths are
-covered by unit tests only, not by a browser run. That closes with the annotated
-fixture suite in Phase 2.
+`e2e/pipeline.spec.ts` drives the full ready state with a real portrait
+(fetched at runtime from the MediaPipe test assets; skips gracefully offline):
+detection → live validation → sheet PDF export, byte-verifying the produced
+PDF, then a single-photo export after the sheet round-trip. The annotated
+fixture suite for head-bound *accuracy* (≥30 diverse portraits) is still
+outstanding.
 
 ## Before public launch
 
