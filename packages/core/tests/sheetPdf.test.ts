@@ -47,9 +47,7 @@ describe("buildSheetPdf", () => {
     const text = new TextDecoder("latin1").decode(bytes);
     // One embedded image object regardless of copy count…
     expect(text.split("/Subtype /Image").length - 1).toBe(1);
-    // …drawn six times in the content stream is not directly greppable
-    // (streams are compressed), so assert via a re-parse that the page exists
-    // and the file stays compact: six embedded copies would blow this budget.
+    // …and the file stays compact: six embedded copies would blow this budget.
     expect(bytes.byteLength).toBeLessThan(20_000);
   });
 

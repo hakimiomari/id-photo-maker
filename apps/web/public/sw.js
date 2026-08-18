@@ -1,18 +1,24 @@
 /**
  * Service worker (spec §5.7): after the first visit the app shell, static
- * assets and — once detection has run — the ML models are all cached, so the
- * whole pipeline works offline. Nothing here ever touches image data; only
- * GET requests for code and models are cached.
+ * assets, the sample portrait and — once detection has run — the ML models are
+ * all cached, so the whole pipeline works offline. Nothing here ever touches
+ * user image data; only GET requests for code, models and bundled assets are
+ * cached.
  *
  * Bump VERSION to invalidate every cache on deploy.
  */
 
-const VERSION = "v1";
+const VERSION = "v2";
 const SHELL_CACHE = `shell-${VERSION}`;
 const ASSET_CACHE = `assets-${VERSION}`;
 
 /** Long-lived, content-hashed or immutable paths → cache-first. */
-const CACHE_FIRST = [/^\/_next\/static\//, /^\/models\//, /^\/icons\//];
+const CACHE_FIRST = [
+  /^\/_next\/static\//,
+  /^\/models\//,
+  /^\/icons\//,
+  /^\/sample-portrait\.jpg$/,
+];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(

@@ -15,7 +15,7 @@ enforced in CI (`pnpm lint:privacy`), not just promised.
 |---|---|---|
 | 0 | Monorepo scaffold, format registry + schema, CI | ✅ done |
 | 1 | Ingest → detect → crop solver → adjust UI → JPEG/PNG export **with DPI metadata** | ✅ done |
-| 2 | Print sheet + PDF, SEO pages, PWA/offline, format buildout (14 formats) | ✅ done |
+| 2 | Print sheet + PDF, SEO pages EN/DE, PWA/offline (e2e-verified), sample-photo demo, 14 formats | ✅ done |
 | 3 | Background removal (ONNX), mask-refined crown detection | ⬜ |
 | 4 | Compliance pre-check, camera capture, batch mode, i18n, Pro tier | ⬜ |
 
@@ -43,7 +43,7 @@ pnpm --filter @photomaker/web fetch:models
 
 ```bash
 pnpm test           # 129 unit tests in packages/core
-pnpm e2e            # 11 Playwright browser tests (builds + serves the app)
+pnpm e2e            # 13 Playwright browser tests, incl. full-pipeline + offline
 pnpm typecheck
 pnpm build
 pnpm lint:privacy   # fails if any network primitive appears in packages/core
@@ -111,18 +111,18 @@ zero-config path.
 
 ## Test coverage notes
 
-`e2e/pipeline.spec.ts` drives the full ready state with a real portrait
-(fetched at runtime from the MediaPipe test assets; skips gracefully offline):
-detection → live validation → sheet PDF export, byte-verifying the produced
-PDF, then a single-photo export after the sheet round-trip. The annotated
-fixture suite for head-bound *accuracy* (≥30 diverse portraits) is still
-outstanding.
+`e2e/pipeline.spec.ts` drives the full ready state using the bundled sample
+portrait (demo mode): detection → live validation → sheet PDF export with the
+produced PDF byte-verified, then a single-photo export after the sheet
+round-trip. `e2e/offline.spec.ts` proves the §5.7 claim: one online visit, then
+the entire pipeline again with the network disabled. The annotated fixture
+suite for head-bound *accuracy* (≥30 diverse portraits) is still outstanding.
 
 ## Before public launch
 
 The spec's Definition of Done (§12) is not met yet. Outstanding:
 
-- [ ] Verify all 11 seed formats against their `source_url`, flip to `verified`
+- [ ] Verify all 14 seed formats against their `source_url`, flip to `verified`
 - [ ] Physically test a print at a drugstore kiosk for true size
 - [ ] Device lab: iPhone Safari with a 48 MP photo, mid-range Android
 - [ ] Impressum + privacy policy pages

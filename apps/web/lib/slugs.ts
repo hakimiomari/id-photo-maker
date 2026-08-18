@@ -3,7 +3,7 @@ import { FORMATS, type PhotoFormat } from "@photomaker/core";
 /**
  * URL slugs for the per-format SEO pages (§8.3): /us-passport-photo,
  * /3x4-photo, … Derived from the registry id so adding a format automatically
- * adds a page.
+ * adds a page (and its /de/ variant).
  */
 export function formatSlug(format: PhotoFormat): string {
   const base = format.id.replace(/^generic-/, "");

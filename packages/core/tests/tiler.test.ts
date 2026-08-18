@@ -68,9 +68,6 @@ describe("layoutSheet — the canonical drugstore case", () => {
 
 describe("layoutSheet — orientation choice", () => {
   it("turns the sheet landscape when that fits more copies", () => {
-    // 50×70 mm on 10×15: portrait fits 1×2=2; landscape (150×100) fits 2×1=2.
-    // 51×51 on 10×15: portrait 1×2=2, landscape 2×1=2 → portrait tie kept.
-    // A clearer case: 45×60 CV photo on 13×18.
     const portrait = layoutSheet(getFormat("cv-photo"), getPaper("13x18"));
     // portrait 13×18: cols fit(124,45)=2, rows fit(174,60)=2 → 4
     // landscape 18×13: cols fit(174,45)=3, rows fit(124,60)=2 → 6
@@ -150,8 +147,7 @@ describe("layoutSheet — cut marks", () => {
   });
 
   it("marks every photo edge on both sheet ends", () => {
-    // 2 columns → 3 unique vertical edges? No: col edges are x, x+35, x+37, x+72
-    // → 4 unique x values, each with a top and bottom tick.
+    // 2 columns → 4 unique x edges, each with a top and bottom tick.
     const verticalMarks = layout.cutMarks.filter((m) => m.x1_mm === m.x2_mm);
     const uniqueX = new Set(verticalMarks.map((m) => m.x1_mm));
     expect(uniqueX.size).toBe(4);

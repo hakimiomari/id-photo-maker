@@ -76,6 +76,7 @@ export function SheetPanel() {
             <span className="font-semibold text-ink">{layout.copies} photos</span>{" "}
             per sheet · 2 mm gaps · cut marks included
           </p>
+
           <div
             className="flex flex-wrap gap-1.5"
             role="group"
@@ -116,6 +117,7 @@ export function SheetPanel() {
               ? "Preparing sheet…"
               : `Download sheet (${output.toUpperCase()})`}
           </button>
+
           <ExportResultCard kinds={["sheet"]} />
           <p className="text-xs leading-relaxed text-ink-faint">
             Order a plain {paperLabel(getPaper(paperId))} photo print at any

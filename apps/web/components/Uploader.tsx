@@ -18,6 +18,19 @@ export function Uploader() {
     if (file) void loadFile(file);
   };
 
+  // Demo mode (§8.1): a bundled portrait through the exact same pipeline.
+  const loadSample = async () => {
+    try {
+      const response = await fetch("/sample-portrait.jpg");
+      const blob = await response.blob();
+      await loadFile(
+        new File([blob], "sample-portrait.jpg", { type: "image/jpeg" }),
+      );
+    } catch {
+      // Same-origin fetch only fails offline before first cache — harmless.
+    }
+  };
+
   return (
     <div className="space-y-3">
       {/* Playwright's detection test dispatches its drop on `.border-dashed`. */}
@@ -80,6 +93,15 @@ export function Uploader() {
             Take a photo
           </button>
         </div>
+
+        <button
+          type="button"
+          className="btn-ghost text-xs"
+          onClick={() => void loadSample()}
+          disabled={loading}
+        >
+          No photo handy? Try a sample photo
+        </button>
 
         <p className="mt-2 inline-flex items-center gap-1.5 text-xs text-ink-faint">
           <IconLock className="h-3.5 w-3.5" />
