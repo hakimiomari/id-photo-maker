@@ -9,6 +9,14 @@ type Pending = {
   reject: (error: Error) => void;
 };
 
+/**
+ * Omit that distributes over unions: `Omit<A | B, K>` collapses to the common
+ * properties of A and B, which would reject every variant-specific field.
+ */
+type DistributiveOmit<T, K extends PropertyKey> = T extends unknown
+  ? Omit<T, K>
+  : never;
+
 export class WorkerClient<Req extends { id: number }, Res extends { id: number }> {
   #worker: Worker | null = null;
   #pending = new Map<number, Pending>();
@@ -38,10 +46,15 @@ export class WorkerClient<Req extends { id: number }, Res extends { id: number }
     this.#pending.clear();
   }
 
-  send(request: Omit<Req, "id">, transfer: Transferable[] = []): Promise<Res> {
+  send(
+    request: DistributiveOmit<Req, "id">,
+    transfer: Transferable[] = [],
+  ): Promise<Res> {
     const worker = this.#ensure();
     const id = this.#nextId++;
-    const message = { ...request, id } as Req;
+    // Reattaching the generated id restores a full Req; the compiler cannot
+    // prove that across the generic boundary, hence the assertion.
+    const message = { ...request, id } as unknown as Req;
     return new Promise<Res>((resolve, reject) => {
       this.#pending.set(id, {
         resolve: resolve as (value: never) => void,

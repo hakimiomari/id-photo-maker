@@ -11,6 +11,8 @@ monetized app cannot ship them.
 | `heic2any` (libheif) | 0.0.x | LGPL-3.0 (libheif: LGPL) | HEIC/HEIF decoding | ✅ cleared — **must stay dynamically imported in its own chunk** (see `packages/core/src/ingest/decode.ts`) |
 | `zod` | 3.x | MIT | Format registry validation | ✅ cleared |
 | `next`, `react`, `zustand`, `tailwindcss` | — | MIT | App framework and UI | ✅ cleared |
+| `pdf-lib` | 1.x | MIT | Print-sheet PDF generation (client-side) | ✅ cleared |
+| MediaPipe test portrait (`sample-portrait.jpg`) | — | Apache-2.0 (MediaPipe assets) | Bundled demo photo for “Try a sample photo” and e2e tests | ✅ cleared — source: storage.googleapis.com/mediapipe-assets/portrait.jpg |
 
 ## Not yet added
 

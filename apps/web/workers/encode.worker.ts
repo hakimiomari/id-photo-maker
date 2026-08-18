@@ -1,23 +1,40 @@
 /// <reference lib="webworker" />
 /**
- * Export render + encode. The full-resolution canvas is created here, at the
- * moment of export, and released immediately afterwards (§6.2).
+ * Export render + encode, for single photos and print sheets. The
+ * full-resolution canvases are created here, at the moment of export, and
+ * released immediately afterwards (§6.2).
  */
 
 import {
+  buildSheetPdf,
+  canvasToBlob,
   encodeCanvas,
   encodeWithinBytes,
+  getPaper,
+  layoutSheet,
+  releaseCanvas,
   renderForFormat,
   renderPhoto,
+  renderSheet,
 } from "@photomaker/core";
-import type { EncodeRequest, EncodeResponse } from "../lib/messages";
+import type {
+  EncodeRequest,
+  EncodeResponse,
+  SheetRequest,
+  SheetResponse,
+} from "../lib/messages";
 
 const ctx = self as unknown as DedicatedWorkerGlobalScope;
 
-ctx.addEventListener("message", async (event: MessageEvent<EncodeRequest>) => {
-  const request = event.data;
-  if (request?.type !== "encode") return;
+type Request = EncodeRequest | SheetRequest;
 
+ctx.addEventListener("message", async (event: MessageEvent<Request>) => {
+  const request = event.data;
+  if (request?.type === "encode") return handleEncode(request);
+  if (request?.type === "sheet") return handleSheet(request);
+});
+
+async function handleEncode(request: EncodeRequest): Promise<void> {
   try {
     const digital = request.digital;
     const rendered = digital
@@ -33,9 +50,7 @@ ctx.addEventListener("message", async (event: MessageEvent<EncodeRequest>) => {
           height: digital.height,
           // A digital upload is measured in pixels, but the file should still
           // declare a sane physical size for anyone who prints it.
-          dpi: Math.round(
-            digital.height / (request.format.height_mm / 25.4),
-          ),
+          dpi: Math.round(digital.height / (request.format.height_mm / 25.4)),
         }
       : renderForFormat(request.source, request.crop, request.format, {
           dpi: request.dpi,
@@ -66,19 +81,73 @@ ctx.addEventListener("message", async (event: MessageEvent<EncodeRequest>) => {
     };
     ctx.postMessage(response, [request.source]);
   } catch (error) {
-    const failure: EncodeResponse = {
+    fail(request, error, "encode-failed", "The photo could not be exported.");
+  }
+}
+
+async function handleSheet(request: SheetRequest): Promise<void> {
+  try {
+    const layout = layoutSheet(request.format, getPaper(request.paperId));
+
+    // Render the single photo once at print resolution; both outputs reuse it.
+    const photo = renderForFormat(request.source, request.crop, request.format, {
+      dpi: request.dpi,
+      adjustments: request.adjustments,
+      backgroundFill: request.backgroundFill,
+    });
+
+    let blob: Blob;
+    if (request.output === "pdf") {
+      const jpeg = await canvasToBlob(photo.canvas, "image/jpeg", 0.92);
+      releaseCanvas(photo.canvas);
+      const bytes = await buildSheetPdf({
+        layout,
+        photoJpeg: new Uint8Array(await jpeg.arrayBuffer()),
+        title: `${request.format.id} print sheet`,
+      });
+      blob = new Blob([bytes as BlobPart], { type: "application/pdf" });
+    } else {
+      const sheet = renderSheet(photo.canvas, layout, request.dpi);
+      releaseCanvas(photo.canvas);
+      const encoded = await encodeCanvas(sheet.canvas, {
+        mimeType: "image/jpeg",
+        quality: 0.92,
+        dpi: request.dpi,
+      });
+      blob = encoded.blob;
+    }
+
+    const response: SheetResponse = {
       id: request.id,
-      ok: false,
-      code: "encode-failed",
-      message:
-        error instanceof Error
-          ? error.message
-          : "The photo could not be exported.",
+      ok: true,
+      blob,
+      bytes: blob.size,
+      copies: layout.copies,
+      sheetWidth_mm: layout.sheetWidth_mm,
+      sheetHeight_mm: layout.sheetHeight_mm,
       source: request.source,
     };
-    // Hand the bitmap back even on failure, or the session loses its photo.
-    ctx.postMessage(failure, [request.source]);
+    ctx.postMessage(response, [request.source]);
+  } catch (error) {
+    fail(request, error, "sheet-failed", "The print sheet could not be created.");
   }
-});
+}
+
+function fail(
+  request: Request,
+  error: unknown,
+  code: string,
+  fallback: string,
+): void {
+  const failure: EncodeResponse = {
+    id: request.id,
+    ok: false,
+    code,
+    message: error instanceof Error ? error.message : fallback,
+    source: request.source,
+  };
+  // Hand the bitmap back even on failure, or the session loses its photo.
+  ctx.postMessage(failure, [request.source]);
+}
 
 export {};
