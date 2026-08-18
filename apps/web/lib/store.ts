@@ -196,8 +196,9 @@ export const usePhotoStore = create<PhotoState>((set, get) => {
 
     setFormat: (id) => {
       getFormat(id); // throws early on a bad id rather than rendering nonsense
-      const previous = get().exportResult;
-      if (previous) URL.revokeObjectURL(previous.url);
+      // Dropping a result must also release its object URL.
+      const previousResult = get().exportResult;
+      if (previousResult) URL.revokeObjectURL(previousResult.url);
       setDerived({
         formatId: id,
         adjust: { ...IDENTITY_ADJUSTMENTS },

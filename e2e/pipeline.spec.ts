@@ -1,19 +1,16 @@
 import { expect, test } from "@playwright/test";
 
 /**
- * Full-pipeline test: a real portrait through detection → crop → validation →
- * sheet export, with the produced PDF verified byte-level. This is the only
- * browser coverage of the ready state — the region where every UI bug so far
- * has lived.
+ * Full-pipeline test: the bundled sample portrait through detection → crop →
+ * validation → sheet export, with the produced PDF verified byte-level. This
+ * is the browser coverage of the ready state — the region where every UI bug
+ * so far has lived. Uses demo mode (§8.1), so it needs no network.
  *
- * Skips (rather than fails) when offline or when the self-hosted model is
- * missing, so a fresh checkout still has a green suite.
+ * Skips (rather than fails) when the self-hosted model is missing, so a fresh
+ * checkout still has a green suite.
  */
 
-const PORTRAIT_URL =
-  "https://storage.googleapis.com/mediapipe-assets/portrait.jpg";
-
-test("portrait → detection → sheet PDF, byte-verified", async ({
+test("sample photo → detection → sheet PDF, byte-verified", async ({
   page,
   request,
 }) => {
@@ -22,17 +19,8 @@ test("portrait → detection → sheet PDF, byte-verified", async ({
   const model = await request.get("/models/face_landmarker.task");
   test.skip(!model.ok(), "Self-hosted model missing — run fetch:models");
 
-  const portrait = await request
-    .get(PORTRAIT_URL)
-    .catch(() => null);
-  test.skip(!portrait?.ok(), "No network for the test portrait");
-  const buffer = await portrait!.body();
-
   await page.goto("/");
-  await page
-    .locator('input[type="file"]')
-    .first()
-    .setInputFiles({ name: "portrait.jpg", mimeType: "image/jpeg", buffer });
+  await page.getByRole("button", { name: "Try a sample photo" }).click();
 
   // Ready state: the editor replaces the uploader.
   await expect(

@@ -141,6 +141,15 @@ test("SEO page renders the spec and deep-links into the editor", async ({ page }
   ).toBeVisible();
 });
 
+test("German SEO page renders localized content", async ({ page }) => {
+  await page.goto("/de/de-fuehrerschein-photo");
+  await expect(
+    page.getByRole("heading", { level: 1, name: /Führerschein/ }),
+  ).toBeVisible();
+  await expect(page.getByText("Offizielle Anforderungen")).toBeVisible();
+  await expect(page.getByText("Kopfhöhe (Kinn bis Scheitel)")).toBeVisible();
+});
+
 test("unknown format slugs 404", async ({ page }) => {
   const response = await page.goto("/klingon-passport-photo");
   expect(response?.status()).toBe(404);
