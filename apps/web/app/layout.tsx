@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
+import { PwaRegister } from "../components/PwaRegister";
 import "./globals.css";
 
 /**
@@ -18,6 +19,7 @@ export const metadata: Metadata = {
   description:
     "Make a correctly sized passport or ID photo in seconds. Your photo never leaves your device — all processing happens in your browser.",
   robots: { index: true, follow: true },
+  manifest: "/manifest.webmanifest",
 };
 
 export const viewport: Viewport = {
@@ -47,6 +49,7 @@ export default function RootLayout({
           Skip to content
         </a>
         {children}
+        <PwaRegister />
       </body>
     </html>
   );

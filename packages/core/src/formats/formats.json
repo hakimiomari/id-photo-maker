@@ -3,7 +3,10 @@
   "formats": [
     {
       "id": "generic-3x4",
-      "label": { "en": "3 × 4 cm photo", "de": "3 × 4 cm Foto" },
+      "label": {
+        "en": "3 × 4 cm photo",
+        "de": "3 × 4 cm Foto"
+      },
       "category": "generic",
       "countries": [],
       "width_mm": 30,
@@ -20,7 +23,10 @@
     },
     {
       "id": "generic-2x3",
-      "label": { "en": "2 × 3 cm photo", "de": "2 × 3 cm Foto" },
+      "label": {
+        "en": "2 × 3 cm photo",
+        "de": "2 × 3 cm Foto"
+      },
       "category": "generic",
       "countries": [],
       "width_mm": 20,
@@ -37,7 +43,10 @@
     },
     {
       "id": "generic-4x6cm",
-      "label": { "en": "4 × 6 cm photo", "de": "4 × 6 cm Foto" },
+      "label": {
+        "en": "4 × 6 cm photo",
+        "de": "4 × 6 cm Foto"
+      },
       "category": "generic",
       "countries": [],
       "width_mm": 40,
@@ -59,7 +68,17 @@
         "de": "Biometrisch 35 × 45 mm"
       },
       "category": "passport",
-      "countries": ["AT", "BE", "NL", "FR", "IT", "ES", "PL", "JP", "AU"],
+      "countries": [
+        "AT",
+        "BE",
+        "NL",
+        "FR",
+        "IT",
+        "ES",
+        "PL",
+        "JP",
+        "AU"
+      ],
       "width_mm": 35,
       "height_mm": 45,
       "head_min_mm": 32,
@@ -74,9 +93,14 @@
     },
     {
       "id": "uk-passport",
-      "label": { "en": "UK passport", "de": "Britischer Reisepass" },
+      "label": {
+        "en": "UK passport",
+        "de": "Britischer Reisepass"
+      },
       "category": "passport",
-      "countries": ["GB"],
+      "countries": [
+        "GB"
+      ],
       "width_mm": 35,
       "height_mm": 45,
       "head_min_mm": 29,
@@ -91,14 +115,22 @@
     },
     {
       "id": "us-passport",
-      "label": { "en": "US passport / visa", "de": "US-Reisepass / Visum" },
+      "label": {
+        "en": "US passport / visa",
+        "de": "US-Reisepass / Visum"
+      },
       "category": "passport",
-      "countries": ["US"],
+      "countries": [
+        "US"
+      ],
       "width_mm": 51,
       "height_mm": 51,
       "head_min_mm": 25,
       "head_max_mm": 35,
-      "eye_line_from_bottom_mm": [28.6, 34.9],
+      "eye_line_from_bottom_mm": [
+        28.6,
+        34.9
+      ],
       "min_dpi": 300,
       "target_dpi": 600,
       "background": "white",
@@ -115,9 +147,14 @@
     },
     {
       "id": "cn-visa",
-      "label": { "en": "China visa", "de": "China-Visum" },
+      "label": {
+        "en": "China visa",
+        "de": "China-Visum"
+      },
       "category": "visa",
-      "countries": ["CN"],
+      "countries": [
+        "CN"
+      ],
       "width_mm": 33,
       "height_mm": 48,
       "head_min_mm": 28,
@@ -138,9 +175,14 @@
     },
     {
       "id": "in-passport",
-      "label": { "en": "India passport", "de": "Indischer Reisepass" },
+      "label": {
+        "en": "India passport",
+        "de": "Indischer Reisepass"
+      },
       "category": "passport",
-      "countries": ["IN"],
+      "countries": [
+        "IN"
+      ],
       "width_mm": 51,
       "height_mm": 51,
       "head_min_mm": 30.6,
@@ -155,9 +197,14 @@
     },
     {
       "id": "ca-passport",
-      "label": { "en": "Canada passport", "de": "Kanadischer Reisepass" },
+      "label": {
+        "en": "Canada passport",
+        "de": "Kanadischer Reisepass"
+      },
       "category": "passport",
-      "countries": ["CA"],
+      "countries": [
+        "CA"
+      ],
       "width_mm": 50,
       "height_mm": 70,
       "head_min_mm": 31,
@@ -171,9 +218,14 @@
     },
     {
       "id": "de-fuehrerschein",
-      "label": { "en": "German driving licence", "de": "Führerschein" },
+      "label": {
+        "en": "German driving licence",
+        "de": "Führerschein"
+      },
       "category": "license",
-      "countries": ["DE"],
+      "countries": [
+        "DE"
+      ],
       "width_mm": 35,
       "height_mm": 45,
       "head_min_mm": 32,
@@ -188,7 +240,10 @@
     },
     {
       "id": "cv-photo",
-      "label": { "en": "CV / résumé photo", "de": "Bewerbungsfoto" },
+      "label": {
+        "en": "CV / résumé photo",
+        "de": "Bewerbungsfoto"
+      },
       "category": "other",
       "countries": [],
       "width_mm": 45,
@@ -202,6 +257,82 @@
       "verified_date": "2026-08-04",
       "verification_status": "seeded",
       "notes": "Non-official format. Framing is looser than for documents."
+    },
+    {
+      "id": "jp-passport",
+      "label": {
+        "en": "Japan passport",
+        "de": "Japanischer Reisepass"
+      },
+      "category": "passport",
+      "countries": [
+        "JP"
+      ],
+      "width_mm": 35,
+      "height_mm": 45,
+      "head_min_mm": 32,
+      "head_max_mm": 36,
+      "min_dpi": 300,
+      "target_dpi": 600,
+      "background": "white",
+      "source_url": "https://www.mofa.go.jp/mofaj/toko/passport/ic_photo.html",
+      "verified_date": "2026-08-05",
+      "verification_status": "seeded",
+      "notes": "MOFA spec: 35×45 mm, head 34 ± 2 mm, crown-to-top margin 4 ± 2 mm, plain light background."
+    },
+    {
+      "id": "kr-passport",
+      "label": {
+        "en": "South Korea passport",
+        "de": "Südkoreanischer Reisepass"
+      },
+      "category": "passport",
+      "countries": [
+        "KR"
+      ],
+      "width_mm": 35,
+      "height_mm": 45,
+      "head_min_mm": 32,
+      "head_max_mm": 36,
+      "min_dpi": 300,
+      "target_dpi": 600,
+      "background": "white",
+      "source_url": "https://www.passport.go.kr/home/kor/contents.do?menuPos=35",
+      "verified_date": "2026-08-05",
+      "verification_status": "seeded",
+      "notes": "35×45 mm, face 32–36 mm, white background, taken within the last 6 months."
+    },
+    {
+      "id": "us-dv-lottery",
+      "label": {
+        "en": "US Green Card lottery (DV)",
+        "de": "US Green-Card-Lotterie (DV)"
+      },
+      "category": "visa",
+      "countries": [
+        "US"
+      ],
+      "width_mm": 51,
+      "height_mm": 51,
+      "head_min_mm": 25,
+      "head_max_mm": 35,
+      "eye_line_from_bottom_mm": [
+        28.6,
+        34.9
+      ],
+      "min_dpi": 300,
+      "target_dpi": 600,
+      "background": "white",
+      "digital_spec": {
+        "width_px": 600,
+        "height_px": 600,
+        "max_bytes": 245760,
+        "format": "jpeg"
+      },
+      "source_url": "https://dvprogram.state.gov/",
+      "verified_date": "2026-08-05",
+      "verification_status": "seeded",
+      "notes": "Digital entry only: 600×600 px JPEG, max 240 KB. Print geometry mirrors the US passport photo."
     }
   ]
 }

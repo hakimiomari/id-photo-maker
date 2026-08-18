@@ -3,6 +3,7 @@
 import { create } from "zustand";
 import {
   DEFAULT_FORMAT_ID,
+  DEFAULT_PAPER_ID,
   estimateHeadBounds,
   exportFilename,
   getFormat,
@@ -24,6 +25,8 @@ import type {
   DetectResponse,
   EncodeRequest,
   EncodeResponse,
+  SheetRequest,
+  SheetResponse,
 } from "./messages";
 import { WorkerClient } from "./workerClient";
 
@@ -37,11 +40,14 @@ export interface ExportResult {
   width: number;
   height: number;
   dpi: number;
-  kind: "print" | "digital";
+  kind: "print" | "digital" | "sheet";
+  /** Sheet exports only: photos per sheet. */
+  copies?: number;
 }
 
 interface PhotoState {
   formatId: string;
+  paperId: string;
   status: Status;
   error: string | null;
   /** Kept so the pipeline can be re-run if a worker dies mid-session. */
@@ -73,6 +79,7 @@ interface PhotoState {
   stage: () => Stage;
 
   setFormat: (id: string) => void;
+  setPaper: (id: string) => void;
   loadFile: (file: File) => Promise<void>;
   selectFace: (index: number) => void;
   pan: (dx: number, dy: number) => void;
@@ -83,6 +90,7 @@ interface PhotoState {
     mimeType?: "image/jpeg" | "image/png";
     digital?: boolean;
   }) => Promise<void>;
+  exportSheet: (output: "jpeg" | "pdf") => Promise<void>;
   clearExport: () => void;
   reset: () => void;
 }
@@ -91,7 +99,10 @@ const MIN_SCALE = 0.4;
 const MAX_SCALE = 3;
 
 let detectClient: WorkerClient<DetectRequest, DetectResponse> | null = null;
-let encodeClient: WorkerClient<EncodeRequest, EncodeResponse> | null = null;
+let encodeClient: WorkerClient<
+  EncodeRequest | SheetRequest,
+  EncodeResponse | SheetResponse
+> | null = null;
 
 function detectWorker() {
   detectClient ??= new WorkerClient<DetectRequest, DetectResponse>(
@@ -104,7 +115,10 @@ function detectWorker() {
 }
 
 function encodeWorker() {
-  encodeClient ??= new WorkerClient<EncodeRequest, EncodeResponse>(
+  encodeClient ??= new WorkerClient<
+    EncodeRequest | SheetRequest,
+    EncodeResponse | SheetResponse
+  >(
     () =>
       new Worker(new URL("../workers/encode.worker.ts", import.meta.url), {
         type: "module",
@@ -150,6 +164,7 @@ export const usePhotoStore = create<PhotoState>((set, get) => {
 
   return {
     formatId: DEFAULT_FORMAT_ID,
+    paperId: DEFAULT_PAPER_ID,
     status: "idle",
     error: null,
     file: null,
@@ -177,8 +192,13 @@ export const usePhotoStore = create<PhotoState>((set, get) => {
       return "format";
     },
 
+    setPaper: (id) => set({ paperId: id }),
+
     setFormat: (id) => {
       getFormat(id); // throws early on a bad id rather than rendering nonsense
+      // Dropping a result must also release its object URL.
+      const previousResult = get().exportResult;
+      if (previousResult) URL.revokeObjectURL(previousResult.url);
       setDerived({
         formatId: id,
         adjust: { ...IDENTITY_ADJUSTMENTS },
@@ -300,8 +320,9 @@ export const usePhotoStore = create<PhotoState>((set, get) => {
           ? "image/png"
           : (options.mimeType ?? "image/jpeg");
 
-      if (state.exportResult) URL.revokeObjectURL(state.exportResult.url);
-      set({ exporting: true, error: null, exportResult: null });
+      // Keep any previous result visible while the new one renders — removing
+      // it here collapses the sidebar and makes the whole page jump.
+      set({ exporting: true, error: null });
 
       try {
         // The bitmap is transferred into the worker and handed back with the
@@ -336,7 +357,10 @@ export const usePhotoStore = create<PhotoState>((set, get) => {
           });
           return;
         }
+        if (!("width" in response)) return; // encode requests get encode responses
 
+        const previous = get().exportResult;
+        if (previous) URL.revokeObjectURL(previous.url);
         set({
           exporting: false,
           source: response.source,
@@ -365,6 +389,73 @@ export const usePhotoStore = create<PhotoState>((set, get) => {
             error instanceof Error
               ? `${error.message} Please re-select your photo and try again.`
               : "The export failed. Please try again.",
+        });
+      }
+    },
+
+    exportSheet: async (output) => {
+      const state = get();
+      const solution = state.solution;
+      const source = state.source;
+      if (!solution || !source) return;
+      // Same transfer discipline as exportPhoto: one in-flight export at most.
+      if (state.exporting) return;
+
+      const format = state.format();
+      // As in exportPhoto: leave the previous result in place until replaced.
+      set({ exporting: true, error: null });
+
+      try {
+        const response = await encodeWorker().send(
+          {
+            type: "sheet",
+            source,
+            crop: toSourceRect(solution.rect, state.sourceScale),
+            format,
+            paperId: state.paperId,
+            dpi: format.target_dpi,
+            output,
+            adjustments: state.image,
+          },
+          [source],
+        );
+
+        if (!response.ok) {
+          set({
+            exporting: false,
+            error: response.message,
+            source: response.source ?? null,
+          });
+          return;
+        }
+        if (!("copies" in response)) return; // sheet requests get sheet responses
+
+        const previous = get().exportResult;
+        if (previous) URL.revokeObjectURL(previous.url);
+        const extension = output === "pdf" ? "pdf" : "jpg";
+        set({
+          exporting: false,
+          source: response.source,
+          exportResult: {
+            url: URL.createObjectURL(response.blob),
+            filename: `sheet-${format.id}-${state.paperId}-${response.copies}up.${extension}`,
+            bytes: response.bytes,
+            width: response.sheetWidth_mm,
+            height: response.sheetHeight_mm,
+            dpi: format.target_dpi,
+            kind: "sheet",
+            copies: response.copies,
+          },
+        });
+      } catch (error) {
+        encodeWorker().terminate();
+        set({
+          exporting: false,
+          source: null,
+          error:
+            error instanceof Error
+              ? `${error.message} Please re-select your photo and try again.`
+              : "The sheet export failed. Please try again.",
         });
       }
     },

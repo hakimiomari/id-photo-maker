@@ -65,6 +65,35 @@ export interface EncodeRequest {
   digital?: { width: number; height: number; maxBytes: number };
 }
 
+export interface SheetRequest {
+  id: number;
+  type: "sheet";
+  source: ImageBitmap;
+  /** Crop rectangle in source pixels. */
+  crop: Rect;
+  format: PhotoFormat;
+  paperId: string;
+  dpi: number;
+  output: "jpeg" | "pdf";
+  adjustments?: ImageAdjustments;
+  backgroundFill?: string;
+}
+
+export interface SheetSuccess {
+  id: number;
+  ok: true;
+  blob: Blob;
+  bytes: number;
+  copies: number;
+  /** Physical sheet size after orientation choice. */
+  sheetWidth_mm: number;
+  sheetHeight_mm: number;
+  /** The source bitmap, handed back so the main thread keeps ownership. */
+  source: ImageBitmap;
+}
+
+export type SheetResponse = SheetSuccess | WorkerFailure;
+
 export interface EncodeSuccess {
   id: number;
   ok: true;
