@@ -23,24 +23,30 @@ ctx.addEventListener("message", async (event: MessageEvent<DetectRequest>) => {
   try {
     const decoded = await decodeImage(request.file);
     const working = await makeWorkingCopy(decoded.bitmap);
-    const { faces } = await detectFaces(working.bitmap, request.config);
 
-    const sameBitmap = working.bitmap === decoded.bitmap;
+    // The preview and the export must own *separate* bitmaps. When the photo is
+    // already within the working size, makeWorkingCopy hands back the source
+    // itself — and exporting transfers the source into the encode worker, which
+    // detaches it. A shared bitmap means the first export kills the preview.
+    const workingBitmap =
+      working.bitmap === decoded.bitmap
+        ? await createImageBitmap(decoded.bitmap)
+        : working.bitmap;
+
+    const { faces } = await detectFaces(workingBitmap, request.config);
+
     const response: DetectResponse = {
       id: request.id,
       ok: true,
-      working: working.bitmap,
+      working: workingBitmap,
       workingSize: working.size,
       sourceSize: { width: decoded.width, height: decoded.height },
       sourceScale: working.sourceScale,
       faces,
-      ...(sameBitmap ? {} : { source: decoded.bitmap }),
+      source: decoded.bitmap,
     };
 
-    const transfer: Transferable[] = sameBitmap
-      ? [working.bitmap]
-      : [working.bitmap, decoded.bitmap];
-    ctx.postMessage(response, transfer);
+    ctx.postMessage(response, [workingBitmap, decoded.bitmap]);
   } catch (error) {
     // A failed detection can leave the WASM instance in a bad state; drop it so
     // the next attempt starts clean.
