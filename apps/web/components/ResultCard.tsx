@@ -19,7 +19,7 @@ export function ExportResultCard({ kinds }: { kinds: ExportResult["kind"][] }) {
   return (
     <div className="space-y-3 rounded-control border border-ok-border bg-ok-soft p-4">
       <p className="flex items-center gap-2 text-sm font-semibold text-ok">
-        <span className="flex h-[18px] w-[18px] items-center justify-center rounded-full bg-ok text-white">
+        <span className="flex h-[18px] w-[18px] items-center justify-center rounded-full bg-ok text-surface">
           <IconCheck className="h-3 w-3" strokeWidth={2.75} />
         </span>
         {sheet ? "Your print sheet is ready." : "Your photo is ready."}

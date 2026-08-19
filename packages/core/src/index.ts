@@ -24,3 +24,6 @@ export * from "./sheet/papers";
 export * from "./sheet/tiler";
 export * from "./sheet/render";
 export * from "./sheet/pdf";
+
+export * from "./segment/matting";
+export * from "./segment/compose";

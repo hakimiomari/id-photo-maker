@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { findFormat, formatLabel } from "@photomaker/core";
 import { AdjustPanel } from "../components/AdjustPanel";
+import { BackgroundPanel } from "../components/BackgroundPanel";
 import { Editor } from "../components/Editor";
 import { ExportPanel } from "../components/ExportPanel";
 import { FormatPicker } from "../components/FormatPicker";
@@ -10,6 +11,7 @@ import { SheetPanel } from "../components/SheetPanel";
 import { Uploader } from "../components/Uploader";
 import { ValidationPanel } from "../components/ValidationPanel";
 import { IconCheck, IconLock, LogoMark } from "../components/icons";
+import { ThemeToggle } from "../components/ThemeToggle";
 import { usePhotoStore } from "../lib/store";
 
 const STEPS = [
@@ -48,10 +50,13 @@ export default function Home() {
             </p>
           </div>
         </div>
-        <span className="hidden items-center gap-1.5 whitespace-nowrap rounded-full border border-ok-border bg-ok-soft px-3 py-1.5 text-xs font-medium text-ok sm:inline-flex">
-          <IconLock className="h-3.5 w-3.5" />
-          100% on-device
-        </span>
+        <div className="flex shrink-0 items-center gap-2.5">
+          <span className="hidden items-center gap-1.5 whitespace-nowrap rounded-full border border-ok-border bg-ok-soft px-3 py-1.5 text-xs font-medium text-ok sm:inline-flex">
+            <IconLock className="h-3.5 w-3.5" />
+            100% on-device
+          </span>
+          <ThemeToggle />
+        </div>
       </header>
 
       <ol
@@ -70,7 +75,7 @@ export default function Home() {
                 <span
                   className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold transition-colors duration-200 ${
                     current
-                      ? "bg-accent text-white shadow-[0_1px_2px_rgba(15,23,42,0.2)]"
+                      ? "bg-accent text-surface shadow-[0_1px_2px_rgba(15,23,42,0.2)]"
                       : done
                         ? "bg-accent-soft text-accent"
                         : "border border-line-strong bg-surface text-ink-faint"
@@ -134,6 +139,9 @@ export default function Home() {
               </section>
               <section className="card p-5">
                 <AdjustPanel />
+              </section>
+              <section className="card p-5">
+                <BackgroundPanel />
               </section>
               <section className="card p-5">
                 <ExportPanel />

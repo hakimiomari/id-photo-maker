@@ -103,7 +103,7 @@ export function ExportPanel() {
 
       {blocked && (
         <p className="flex items-start gap-2 text-sm leading-snug text-danger">
-          <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-danger text-white">
+          <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-danger text-surface">
             <IconAlert className="h-3 w-3" strokeWidth={2.5} />
           </span>
           Fix the checks above before downloading — this crop would be rejected.

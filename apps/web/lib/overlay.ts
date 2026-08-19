@@ -5,10 +5,33 @@
 
 import type { CropSolution, HeadBox, PhotoFormat, Rect } from "@photomaker/core";
 
-const HAIRLINE = "rgba(29, 78, 216, 0.55)";
-const HAIRLINE_SOFT = "rgba(18, 22, 28, 0.35)";
-const BAND = "rgba(29, 78, 216, 0.10)";
-const LABEL = "rgba(18, 22, 28, 0.75)";
+/** Canvas paints can't use CSS variables — the Editor picks a palette. */
+export interface OverlayPalette {
+  hairline: string;
+  hairlineSoft: string;
+  band: string;
+  label: string;
+  dim: string;
+  frame: string;
+}
+
+export const OVERLAY_LIGHT: OverlayPalette = {
+  hairline: "rgba(29, 78, 216, 0.55)",
+  hairlineSoft: "rgba(18, 22, 28, 0.35)",
+  band: "rgba(29, 78, 216, 0.10)",
+  label: "rgba(18, 22, 28, 0.75)",
+  dim: "rgba(245, 246, 248, 0.86)",
+  frame: "rgba(18, 22, 28, 0.55)",
+};
+
+export const OVERLAY_DARK: OverlayPalette = {
+  hairline: "rgba(127, 163, 242, 0.65)",
+  hairlineSoft: "rgba(232, 234, 238, 0.35)",
+  band: "rgba(127, 163, 242, 0.14)",
+  label: "rgba(232, 234, 238, 0.8)",
+  dim: "rgba(15, 17, 21, 0.86)",
+  frame: "rgba(232, 234, 238, 0.5)",
+};
 
 export interface OverlayContext {
   ctx: CanvasRenderingContext2D;
@@ -19,6 +42,7 @@ export interface OverlayContext {
   head: HeadBox;
   /** Screen px per working px. */
   k: number;
+  palette: OverlayPalette;
 }
 
 export function drawOverlay({
@@ -28,6 +52,7 @@ export function drawOverlay({
   solution,
   head,
   k,
+  palette,
 }: OverlayContext): void {
   const pxPerMm = frame.height / format.height_mm;
   const crownY = frame.y + solution.topMarginMm * pxPerMm;
@@ -43,32 +68,32 @@ export function drawOverlay({
   if (format.head_min_mm !== null && format.head_max_mm !== null) {
     const minY = crownY + format.head_min_mm * pxPerMm;
     const maxY = crownY + format.head_max_mm * pxPerMm;
-    ctx.fillStyle = BAND;
+    ctx.fillStyle = palette.band;
     ctx.fillRect(frame.x, minY, frame.width, maxY - minY);
 
-    ctx.strokeStyle = HAIRLINE;
+    ctx.strokeStyle = palette.hairline;
     ctx.setLineDash([4, 4]);
     for (const y of [minY, maxY]) {
       line(ctx, frame.x, y, frame.x + frame.width, y);
     }
     ctx.setLineDash([]);
 
-    label(ctx, `${format.head_min_mm} mm`, frame.x + 6, minY - 9);
-    label(ctx, `${format.head_max_mm} mm`, frame.x + 6, maxY + 9);
+    label(ctx, `${format.head_min_mm} mm`, frame.x + 6, minY - 9, palette.label);
+    label(ctx, `${format.head_max_mm} mm`, frame.x + 6, maxY + 9, palette.label);
   }
 
   // Eye-line band, for formats that constrain it.
   if (format.eye_line_from_bottom_mm) {
     const [min, max] = format.eye_line_from_bottom_mm;
     const yFromBottom = (mm: number) => frame.y + frame.height - mm * pxPerMm;
-    ctx.fillStyle = BAND;
+    ctx.fillStyle = palette.band;
     ctx.fillRect(
       frame.x,
       yFromBottom(max),
       frame.width,
       (max - min) * pxPerMm,
     );
-    ctx.strokeStyle = HAIRLINE;
+    ctx.strokeStyle = palette.hairline;
     ctx.setLineDash([2, 3]);
     line(ctx, frame.x, yFromBottom(min), frame.x + frame.width, yFromBottom(min));
     line(ctx, frame.x, yFromBottom(max), frame.x + frame.width, yFromBottom(max));
@@ -76,7 +101,7 @@ export function drawOverlay({
   }
 
   // Measured crown and chin.
-  ctx.strokeStyle = HAIRLINE;
+  ctx.strokeStyle = palette.hairline;
   line(ctx, frame.x, crownY, frame.x + frame.width, crownY);
   line(ctx, frame.x, chinY, frame.x + frame.width, chinY);
 
@@ -93,7 +118,7 @@ export function drawOverlay({
 
   // Measured eye line.
   const eyeY = frame.y + (head.yEyes - solution.rect.y) * k;
-  ctx.strokeStyle = HAIRLINE_SOFT;
+  ctx.strokeStyle = palette.hairlineSoft;
   ctx.setLineDash([2, 4]);
   line(ctx, frame.x, eyeY, frame.x + frame.width, eyeY);
 
@@ -110,15 +135,16 @@ export function drawFrame(
   ctx: CanvasRenderingContext2D,
   frame: Rect,
   canvas: { width: number; height: number },
+  palette: OverlayPalette,
 ): void {
   ctx.save();
-  ctx.fillStyle = "rgba(247, 248, 250, 0.86)";
+  ctx.fillStyle = palette.dim;
   ctx.beginPath();
   ctx.rect(0, 0, canvas.width, canvas.height);
   ctx.rect(frame.x, frame.y, frame.width, frame.height);
   ctx.fill("evenodd");
 
-  ctx.strokeStyle = "rgba(18, 22, 28, 0.55)";
+  ctx.strokeStyle = palette.frame;
   ctx.lineWidth = 1;
   ctx.strokeRect(frame.x + 0.5, frame.y + 0.5, frame.width - 1, frame.height - 1);
   ctx.restore();
@@ -147,8 +173,9 @@ function label(
   text: string,
   x: number,
   y: number,
+  color: string,
 ): void {
-  ctx.fillStyle = LABEL;
+  ctx.fillStyle = color;
   ctx.fillText(text, x, y);
 }
 

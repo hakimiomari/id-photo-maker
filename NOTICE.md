@@ -13,12 +13,12 @@ monetized app cannot ship them.
 | `next`, `react`, `zustand`, `tailwindcss` | — | MIT | App framework and UI | ✅ cleared |
 | `pdf-lib` | 1.x | MIT | Print-sheet PDF generation (client-side) | ✅ cleared |
 | MediaPipe test portrait (`sample-portrait.jpg`) | — | Apache-2.0 (MediaPipe assets) | Bundled demo photo for “Try a sample photo” and e2e tests | ✅ cleared — source: storage.googleapis.com/mediapipe-assets/portrait.jpg |
+| `onnxruntime-web` | 1.27.x | MIT | ONNX inference (WASM/WebGPU) for portrait matting | ✅ cleared — runtime binaries self-hosted from node_modules |
+| MODNet photographic portrait matting (`modnet.onnx`) | — | Apache-2.0 (ZHKKKe/MODNet; ONNX export Xenova/modnet) | Background removal (§5.3) + crown refinement (§4.2.3) | ✅ cleared — sha256 `07c308cf0fc7e6e8b2065a12ed7fc07e1de8febb7dc7839d7b7f15dd66584df9`. **BRIA RMBG models remain forbidden (non-commercial).** |
 
 ## Not yet added
 
-| Component | Purpose | Licence status |
-|---|---|---|
-| Background segmentation model (Phase 3) | Portrait matting | **Undecided.** MODNet (Apache-2.0) is the intended choice. BRIA RMBG-1.4 / 2.0 are non-commercial and **must not** be used. Record the model name, source URL, licence and file hash here before merging Phase 3. |
+_(nothing pending)_
 
 ## Model file integrity
 
