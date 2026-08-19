@@ -16,10 +16,12 @@ enforced in CI (`pnpm lint:privacy`), not just promised.
 | 0 | Monorepo scaffold, format registry + schema, CI | ✅ done |
 | 1 | Ingest → detect → crop solver → adjust UI → JPEG/PNG export **with DPI metadata** | ✅ done |
 | 2 | Print sheet + PDF, SEO pages EN/DE, PWA/offline (e2e-verified), sample-photo demo, 14 formats | ✅ done |
-| 3 | Background removal (ONNX), mask-refined crown detection | ⬜ |
+| 3 | Background removal (MODNet/ONNX, WebGPU→WASM), fills, feather, mask-refined crown | ✅ done |
 | 4 | Compliance pre-check, camera capture, batch mode, i18n, Pro tier | ⬜ |
 
-`packages/core/src/segment/` does not exist yet; it arrives with Phase 3.
+Background removal needs the self-hosted models: run
+`pnpm --filter @photomaker/web fetch:models` (downloads MODNet ~25 MB and
+copies the onnxruntime-web runtime out of node_modules).
 
 ## Getting started
 

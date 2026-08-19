@@ -87,7 +87,7 @@ export function FormatPicker() {
                     }`}
                   >
                     {selected && (
-                      <span className="absolute right-2 top-2 flex h-4 w-4 items-center justify-center rounded-full bg-accent text-white">
+                      <span className="absolute right-2 top-2 flex h-4 w-4 items-center justify-center rounded-full bg-accent text-surface">
                         <IconCheck className="h-2.5 w-2.5" strokeWidth={3} />
                       </span>
                     )}

@@ -26,7 +26,7 @@ function LevelGlyph({ level }: { level: ValidationLevel }) {
   const Icon = level === "ok" ? IconCheck : level === "warn" ? IconAlert : IconX;
   return (
     <span
-      className={`flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full text-white ${DOT[level]}`}
+      className={`flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full text-surface ${DOT[level]}`}
     >
       <Icon className="h-3 w-3" strokeWidth={2.75} />
     </span>

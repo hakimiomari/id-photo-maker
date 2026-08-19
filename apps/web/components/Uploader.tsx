@@ -53,7 +53,7 @@ export function Uploader() {
       >
         <span
           className={`flex h-14 w-14 items-center justify-center rounded-full transition-colors duration-200 ${
-            dragging ? "bg-accent text-white" : "bg-accent-soft text-accent"
+            dragging ? "bg-accent text-surface" : "bg-accent-soft text-accent"
           }`}
         >
           <IconUpload className="h-6 w-6" />
@@ -134,7 +134,7 @@ export function Uploader() {
           role="alert"
           className="flex items-start gap-2.5 rounded-control border border-danger-border bg-danger-soft px-3.5 py-3 text-sm leading-relaxed text-danger"
         >
-          <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-danger text-white">
+          <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-danger text-surface">
             <IconAlert className="h-3 w-3" strokeWidth={2.5} />
           </span>
           {error}

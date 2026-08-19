@@ -16,3 +16,13 @@ export const faceLandmarkerConfig: FaceLandmarkerConfig = {
   modelUrl: process.env.NEXT_PUBLIC_MEDIAPIPE_MODEL ?? CDN_MODEL,
   delegate: "GPU",
 };
+
+/**
+ * Background-removal assets. Self-hosted only (no CDN fallback): the model is
+ * ~25 MB and the ORT wasm files must match the installed onnxruntime-web
+ * version, so both come from `pnpm --filter @photomaker/web fetch:models`.
+ */
+export const segmentConfig = {
+  modelUrl: process.env.NEXT_PUBLIC_SEGMENT_MODEL ?? "/models/modnet.onnx",
+  ortBase: process.env.NEXT_PUBLIC_ORT_BASE ?? "/models/ort/",
+};
