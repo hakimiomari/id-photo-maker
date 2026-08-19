@@ -2,9 +2,12 @@
 
 import { create } from "zustand";
 import {
+  BACKGROUND_FILLS,
   DEFAULT_FORMAT_ID,
   DEFAULT_PAPER_ID,
   estimateHeadBounds,
+  foregroundRatio,
+  refineCrownFromMask,
   exportFilename,
   getFormat,
   IDENTITY_ADJUSTMENTS,
@@ -19,12 +22,15 @@ import {
   type PhotoFormat,
   type Size,
 } from "@photomaker/core";
-import { faceLandmarkerConfig } from "./config";
+import { faceLandmarkerConfig, segmentConfig } from "./config";
 import type {
   DetectRequest,
   DetectResponse,
   EncodeRequest,
   EncodeResponse,
+  MattePayload,
+  SegmentRequest,
+  SegmentResponse,
   SheetRequest,
   SheetResponse,
 } from "./messages";
@@ -63,6 +69,19 @@ interface PhotoState {
   exporting: boolean;
   exportResult: ExportResult | null;
 
+  /** Portrait matte at working resolution (§5.3); also refines the crown (§4.2.3). */
+  mask: Uint8Array | null;
+  maskSize: Size | null;
+  segmenting: boolean;
+  background: {
+    /** Replacement colour; null = keep the original background. */
+    fill: string | null;
+    /** Edge feather 0–3 px at working resolution. */
+    feather: number;
+    /** Before/after toggle for the preview only. */
+    showOriginal: boolean;
+  };
+
   /**
    * Derived state, recomputed once per change rather than per read.
    *
@@ -91,6 +110,11 @@ interface PhotoState {
     digital?: boolean;
   }) => Promise<void>;
   exportSheet: (output: "jpeg" | "pdf") => Promise<void>;
+  removeBackground: () => Promise<void>;
+  clearBackground: () => void;
+  setBackgroundFill: (fill: string) => void;
+  setFeather: (feather: number) => void;
+  toggleOriginal: () => void;
   clearExport: () => void;
   reset: () => void;
 }
@@ -114,6 +138,23 @@ function detectWorker() {
   return detectClient;
 }
 
+let segmentClient: WorkerClient<SegmentRequest, SegmentResponse> | null = null;
+
+function segmentWorker() {
+  segmentClient ??= new WorkerClient<SegmentRequest, SegmentResponse>(
+    () =>
+      new Worker(new URL("../workers/segment.worker.ts", import.meta.url), {
+        type: "module",
+      }),
+  );
+  return segmentClient;
+}
+
+/** The fill a format's spec asks for; white when unregulated. */
+export function requiredFill(background: PhotoFormat["background"]): string {
+  return BACKGROUND_FILLS[background] ?? "#FFFFFF";
+}
+
 function encodeWorker() {
   encodeClient ??= new WorkerClient<
     EncodeRequest | SheetRequest,
@@ -133,10 +174,14 @@ function derive(state: PhotoState): Pick<PhotoState, "head" | "solution"> {
   if (!face || !state.workingSize) return { head: null, solution: null };
 
   try {
-    const head = estimateHeadBounds({
+    let head = estimateHeadBounds({
       landmarks: face.landmarks,
       image: state.workingSize,
     });
+    // §4.2.3: the topmost foreground pixel beats the hair-allowance heuristic.
+    if (state.mask && state.maskSize) {
+      head = refineCrownFromMask(head, state.mask, state.maskSize, state.workingSize);
+    }
     const solution = solveCrop({
       head,
       format: getFormat(state.formatId),
@@ -150,6 +195,18 @@ function derive(state: PhotoState): Pick<PhotoState, "head" | "solution"> {
     // "no usable face" empty state rather than rendering a broken crop.
     return { head: null, solution: null };
   }
+}
+
+/** Matte payload for exports — a copy, so the preview keeps its mask. */
+function buildMatte(state: PhotoState): MattePayload | null {
+  if (!state.mask || !state.maskSize || !state.background.fill) return null;
+  return {
+    data: state.mask.slice(),
+    width: state.maskSize.width,
+    height: state.maskSize.height,
+    feather: state.background.feather,
+    fill: state.background.fill,
+  };
 }
 
 export const usePhotoStore = create<PhotoState>((set, get) => {
@@ -178,6 +235,10 @@ export const usePhotoStore = create<PhotoState>((set, get) => {
     image: { ...NEUTRAL_ADJUSTMENTS },
     exporting: false,
     exportResult: null,
+    mask: null,
+    maskSize: null,
+    segmenting: false,
+    background: { fill: null, feather: 1, showOriginal: false },
 
     format: () => getFormat(get().formatId),
 
@@ -224,6 +285,9 @@ export const usePhotoStore = create<PhotoState>((set, get) => {
         faceIndex: 0,
         adjust: { ...IDENTITY_ADJUSTMENTS },
         exportResult: null,
+        mask: null,
+        maskSize: null,
+        background: { fill: null, feather: 1, showOriginal: false },
       });
 
       try {
@@ -324,6 +388,8 @@ export const usePhotoStore = create<PhotoState>((set, get) => {
       // it here collapses the sidebar and makes the whole page jump.
       set({ exporting: true, error: null });
 
+      const matte = buildMatte(state);
+
       try {
         // The bitmap is transferred into the worker and handed back with the
         // response, so the main thread never holds two copies.
@@ -336,6 +402,7 @@ export const usePhotoStore = create<PhotoState>((set, get) => {
             dpi: format.target_dpi,
             mimeType,
             adjustments: state.image,
+            ...(matte ? { matte } : {}),
             ...(digitalSpec
               ? {
                   digital: {
@@ -405,6 +472,8 @@ export const usePhotoStore = create<PhotoState>((set, get) => {
       // As in exportPhoto: leave the previous result in place until replaced.
       set({ exporting: true, error: null });
 
+      const matte = buildMatte(state);
+
       try {
         const response = await encodeWorker().send(
           {
@@ -416,6 +485,7 @@ export const usePhotoStore = create<PhotoState>((set, get) => {
             dpi: format.target_dpi,
             output,
             adjustments: state.image,
+            ...(matte ? { matte } : {}),
           },
           [source],
         );
@@ -460,6 +530,77 @@ export const usePhotoStore = create<PhotoState>((set, get) => {
       }
     },
 
+    removeBackground: async () => {
+      const state = get();
+      if (!state.working || state.segmenting) return;
+      set({ segmenting: true, error: null });
+
+      try {
+        // Send a copy; the editor keeps drawing the original working bitmap.
+        const copy = await createImageBitmap(state.working);
+        const response = await segmentWorker().send(
+          { type: "segment", bitmap: copy, config: segmentConfig },
+          [copy],
+        );
+
+        if (!response.ok) {
+          set({ segmenting: false, error: response.message });
+          return;
+        }
+        if (foregroundRatio(response.mask) < 0.02) {
+          set({
+            segmenting: false,
+            error:
+              "No clear person outline was found — background removal works best with a single, well-lit subject.",
+          });
+          return;
+        }
+
+        // setDerived: the mask also refines the crown, which can change the
+        // measured head height and therefore the validation verdict.
+        setDerived({
+          segmenting: false,
+          mask: response.mask,
+          maskSize: { width: response.width, height: response.height },
+          background: {
+            fill: requiredFill(get().format().background),
+            feather: 1,
+            showOriginal: false,
+          },
+        });
+      } catch (error) {
+        segmentWorker().terminate();
+        set({
+          segmenting: false,
+          error:
+            error instanceof Error
+              ? error.message
+              : "Background removal failed. Please try again.",
+        });
+      }
+    },
+
+    clearBackground: () =>
+      setDerived({
+        mask: null,
+        maskSize: null,
+        background: { fill: null, feather: 1, showOriginal: false },
+      }),
+
+    setBackgroundFill: (fill) =>
+      set((state) => ({ background: { ...state.background, fill } })),
+
+    setFeather: (feather) =>
+      set((state) => ({ background: { ...state.background, feather } })),
+
+    toggleOriginal: () =>
+      set((state) => ({
+        background: {
+          ...state.background,
+          showOriginal: !state.background.showOriginal,
+        },
+      })),
+
     clearExport: () => {
       const result = get().exportResult;
       if (result) URL.revokeObjectURL(result.url);
@@ -484,6 +625,10 @@ export const usePhotoStore = create<PhotoState>((set, get) => {
         adjust: { ...IDENTITY_ADJUSTMENTS },
         image: { ...NEUTRAL_ADJUSTMENTS },
         exportResult: null,
+        mask: null,
+        maskSize: null,
+        segmenting: false,
+        background: { fill: null, feather: 1, showOriginal: false },
       });
     },
   };

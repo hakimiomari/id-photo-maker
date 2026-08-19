@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { findFormat, formatLabel } from "@photomaker/core";
 import { AdjustPanel } from "../components/AdjustPanel";
+import { BackgroundPanel } from "../components/BackgroundPanel";
 import { Editor } from "../components/Editor";
 import { ExportPanel } from "../components/ExportPanel";
 import { FormatPicker } from "../components/FormatPicker";
@@ -138,6 +139,9 @@ export default function Home() {
               </section>
               <section className="card p-5">
                 <AdjustPanel />
+              </section>
+              <section className="card p-5">
+                <BackgroundPanel />
               </section>
               <section className="card p-5">
                 <ExportPanel />

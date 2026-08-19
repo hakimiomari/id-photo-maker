@@ -4,7 +4,9 @@
       "Bash(npm pkg *)",
       "Bash(node -e \"const p=require\\('./packages/core/package.json'\\); p.dependencies['heic2any']='^0.0.4'; require\\('fs'\\).writeFileSync\\('./packages/core/package.json', JSON.stringify\\(p,null,2\\)+'\\\\n'\\)\")",
       "Bash(pnpm install *)",
-      "Bash(pnpm e2e *)"
+      "Bash(pnpm e2e *)",
+      "Bash(python3 -)",
+      "Bash(pnpm typecheck *)"
     ]
   }
 }

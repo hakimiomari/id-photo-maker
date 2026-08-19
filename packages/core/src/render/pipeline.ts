@@ -4,6 +4,7 @@
  */
 
 import { createCanvas, get2d, type AnyCanvas } from "../ingest/canvas";
+
 import { exportPixelSize } from "../geometry/units";
 import type { PhotoFormat, Rect } from "../types";
 
@@ -29,8 +30,11 @@ export const BACKGROUND_FILLS: Record<string, string> = {
   any: "#FFFFFF",
 };
 
+/** Photos render from the decoded bitmap or from a matte-composed canvas. */
+export type RenderSource = ImageBitmap | AnyCanvas;
+
 export interface RenderOptions {
-  source: ImageBitmap;
+  source: RenderSource;
   /** Crop rectangle in *source* pixels. */
   crop: Rect;
   /** Output size in pixels. */
@@ -76,7 +80,7 @@ export function renderPhoto(options: RenderOptions): AnyCanvas {
   const sw = Math.max(1, Math.min(crop.width, source.width - sx));
   const sh = Math.max(1, Math.min(crop.height, source.height - sy));
 
-  ctx.drawImage(source, sx, sy, sw, sh, 0, 0, output.width, output.height);
+  ctx.drawImage(source as CanvasImageSource, sx, sy, sw, sh, 0, 0, output.width, output.height);
   ctx.filter = "none";
 
   return canvas;
@@ -84,7 +88,7 @@ export function renderPhoto(options: RenderOptions): AnyCanvas {
 
 /** Convenience: render at a format's target DPI. */
 export function renderForFormat(
-  source: ImageBitmap,
+  source: RenderSource,
   crop: Rect,
   format: PhotoFormat,
   options: {
