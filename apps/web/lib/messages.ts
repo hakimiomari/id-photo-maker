@@ -49,6 +49,45 @@ export interface WorkerFailure {
 
 export type DetectResponse = DetectSuccess | WorkerFailure;
 
+export interface SegmentConfig {
+  /** URL of the MODNet ONNX model. */
+  modelUrl: string;
+  /** Directory containing the onnxruntime-web .wasm/.mjs files. */
+  ortBase: string;
+}
+
+export interface SegmentRequest {
+  id: number;
+  type: "segment";
+  /** A *copy* of the working bitmap — transferred in and consumed. */
+  bitmap: ImageBitmap;
+  config: SegmentConfig;
+}
+
+export interface SegmentSuccess {
+  id: number;
+  ok: true;
+  /** 8-bit alpha matte at the working copy's resolution. */
+  mask: Uint8Array;
+  width: number;
+  height: number;
+  backend: "webgpu" | "wasm";
+  ms: number;
+}
+
+export type SegmentResponse = SegmentSuccess | WorkerFailure;
+
+/** Matte payload attached to exports when background replacement is active. */
+export interface MattePayload {
+  /** Working-resolution alpha; upsampled bilinearly at render time (§5.3). */
+  data: Uint8Array;
+  width: number;
+  height: number;
+  /** Feather radius in working px (0–3); scaled to source res, min 1 px. */
+  feather: number;
+  fill: string;
+}
+
 export interface EncodeRequest {
   id: number;
   type: "encode";
@@ -63,6 +102,7 @@ export interface EncodeRequest {
   backgroundFill?: string;
   /** Digital-spec exports: exact pixel size and byte ceiling. */
   digital?: { width: number; height: number; maxBytes: number };
+  matte?: MattePayload;
 }
 
 export interface SheetRequest {
@@ -77,6 +117,7 @@ export interface SheetRequest {
   output: "jpeg" | "pdf";
   adjustments?: ImageAdjustments;
   backgroundFill?: string;
+  matte?: MattePayload;
 }
 
 export interface SheetSuccess {

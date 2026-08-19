@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { composeWithMatte, releaseCanvas } from "@photomaker/core";
 import { usePhotoStore } from "../lib/store";
 import {
   computeFrame,
@@ -26,11 +27,43 @@ export function Editor() {
 
   const working = usePhotoStore((s) => s.working);
   const image = usePhotoStore((s) => s.image);
+  const mask = usePhotoStore((s) => s.mask);
+  const background = usePhotoStore((s) => s.background);
   // One subscription for the whole crop: `solution` is recomputed (and gets a
   // new identity) on every pan, zoom, format change and face change.
   const solution = usePhotoStore((s) => s.solution);
   const pan = usePhotoStore((s) => s.pan);
   const zoomBy = usePhotoStore((s) => s.zoomBy);
+
+  // Cut-out of the working bitmap through the matte, rebuilt when the mask or
+  // feather changes. Kept as an ImageBitmap so draw() stays cheap per frame.
+  const cutoutRef = useRef<ImageBitmap | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    const state = usePhotoStore.getState();
+    cutoutRef.current?.close();
+    cutoutRef.current = null;
+    if (mask && state.maskSize && working) {
+      const composed = composeWithMatte(working, {
+        mask,
+        maskSize: state.maskSize,
+        fill: null,
+        feather: background.feather,
+      });
+      void createImageBitmap(composed as unknown as ImageBitmapSource).then(
+        (bitmap) => {
+          releaseCanvas(composed);
+          if (cancelled) return bitmap.close();
+          cutoutRef.current = bitmap;
+          requestAnimationFrame(draw);
+        },
+      );
+    }
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mask, background.feather, working]);
 
   useLayoutEffect(() => {
     const element = containerRef.current;
@@ -65,16 +98,27 @@ export function Editor() {
     const frame = computeFrame(area, format);
     const k = frame.width / solution.rect.width;
 
+    const imgX = frame.x - solution.rect.x * k;
+    const imgY = frame.y - solution.rect.y * k;
+    const imgW = state.working.width * k;
+    const imgH = state.working.height * k;
+
     ctx.save();
     ctx.filter = filterOf(state.image);
     ctx.imageSmoothingQuality = "high";
-    ctx.drawImage(
-      state.working,
-      frame.x - solution.rect.x * k,
-      frame.y - solution.rect.y * k,
-      state.working.width * k,
-      state.working.height * k,
-    );
+    const cutout = cutoutRef.current;
+    const replaceBg =
+      cutout && state.background.fill && !state.background.showOriginal;
+    if (replaceBg) {
+      // Background replacement preview: fill first, then the matted subject.
+      ctx.filter = "none";
+      ctx.fillStyle = state.background.fill!;
+      ctx.fillRect(imgX, imgY, imgW, imgH);
+      ctx.filter = filterOf(state.image);
+      ctx.drawImage(cutout, imgX, imgY, imgW, imgH);
+    } else {
+      ctx.drawImage(state.working, imgX, imgY, imgW, imgH);
+    }
     ctx.restore();
 
     const palette = document.documentElement.classList.contains("dark")
@@ -87,7 +131,7 @@ export function Editor() {
   useEffect(() => {
     const id = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(id);
-  }, [draw, working, solution, image]);
+  }, [draw, working, solution, image, mask, background]);
 
   // The guides are canvas paint, not CSS — repaint when the theme flips.
   useEffect(() => {

@@ -8,6 +8,7 @@
 import {
   buildSheetPdf,
   canvasToBlob,
+  composeWithMatte,
   encodeCanvas,
   encodeWithinBytes,
   getPaper,
@@ -16,7 +17,10 @@ import {
   renderForFormat,
   renderPhoto,
   renderSheet,
+  type AnyCanvas,
+  type RenderSource,
 } from "@photomaker/core";
+import type { MattePayload } from "../lib/messages";
 import type {
   EncodeRequest,
   EncodeResponse,
@@ -28,6 +32,26 @@ const ctx = self as unknown as DedicatedWorkerGlobalScope;
 
 type Request = EncodeRequest | SheetRequest;
 
+/**
+ * Background replacement (§5.3): compose the full-resolution source through
+ * the working-res matte (bilinear upsample happens inside composeWithMatte).
+ * Feather scales with resolution, minimum 1 px at export.
+ */
+function matteSource(
+  source: ImageBitmap,
+  matte: MattePayload | undefined,
+): { src: RenderSource; composed: AnyCanvas | null } {
+  if (!matte) return { src: source, composed: null };
+  const scale = source.width / matte.width;
+  const composed = composeWithMatte(source, {
+    mask: matte.data,
+    maskSize: { width: matte.width, height: matte.height },
+    fill: matte.fill,
+    feather: Math.max(1, Math.round(matte.feather * scale)),
+  });
+  return { src: composed, composed };
+}
+
 ctx.addEventListener("message", async (event: MessageEvent<Request>) => {
   const request = event.data;
   if (request?.type === "encode") return handleEncode(request);
@@ -35,12 +59,15 @@ ctx.addEventListener("message", async (event: MessageEvent<Request>) => {
 });
 
 async function handleEncode(request: EncodeRequest): Promise<void> {
+  let composed: AnyCanvas | null = null;
   try {
     const digital = request.digital;
+    const prepared = matteSource(request.source, request.matte);
+    composed = prepared.composed;
     const rendered = digital
       ? {
           canvas: renderPhoto({
-            source: request.source,
+            source: prepared.src,
             crop: request.crop,
             output: { width: digital.width, height: digital.height },
             adjustments: request.adjustments,
@@ -52,11 +79,13 @@ async function handleEncode(request: EncodeRequest): Promise<void> {
           // declare a sane physical size for anyone who prints it.
           dpi: Math.round(digital.height / (request.format.height_mm / 25.4)),
         }
-      : renderForFormat(request.source, request.crop, request.format, {
+      : renderForFormat(prepared.src, request.crop, request.format, {
           dpi: request.dpi,
           adjustments: request.adjustments,
           backgroundFill: request.backgroundFill,
         });
+    if (composed) releaseCanvas(composed);
+    composed = null;
 
     const encoded = digital
       ? await encodeWithinBytes(rendered.canvas, digital.maxBytes, {
@@ -81,20 +110,26 @@ async function handleEncode(request: EncodeRequest): Promise<void> {
     };
     ctx.postMessage(response, [request.source]);
   } catch (error) {
+    if (composed) releaseCanvas(composed);
     fail(request, error, "encode-failed", "The photo could not be exported.");
   }
 }
 
 async function handleSheet(request: SheetRequest): Promise<void> {
+  let composed: AnyCanvas | null = null;
   try {
     const layout = layoutSheet(request.format, getPaper(request.paperId));
 
+    const prepared = matteSource(request.source, request.matte);
+    composed = prepared.composed;
     // Render the single photo once at print resolution; both outputs reuse it.
-    const photo = renderForFormat(request.source, request.crop, request.format, {
+    const photo = renderForFormat(prepared.src, request.crop, request.format, {
       dpi: request.dpi,
       adjustments: request.adjustments,
       backgroundFill: request.backgroundFill,
     });
+    if (composed) releaseCanvas(composed);
+    composed = null;
 
     let blob: Blob;
     if (request.output === "pdf") {
@@ -129,6 +164,7 @@ async function handleSheet(request: SheetRequest): Promise<void> {
     };
     ctx.postMessage(response, [request.source]);
   } catch (error) {
+    if (composed) releaseCanvas(composed);
     fail(request, error, "sheet-failed", "The print sheet could not be created.");
   }
 }
