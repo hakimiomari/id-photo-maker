@@ -10,7 +10,8 @@
  */
 
 import { createHash } from "node:crypto";
-import { cp, mkdir, readdir, writeFile } from "node:fs/promises";
+import { existsSync, statSync } from "node:fs";
+import { cp, mkdir, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -48,6 +49,12 @@ const FILES = [
 for (const file of FILES) {
   const target = join(outDir, file.path);
   await mkdir(dirname(target), { recursive: true });
+  // Idempotent: runs on every production build (Vercel included), so skip
+  // anything already present instead of re-downloading ~50 MB.
+  if (existsSync(target) && statSync(target).size > 0) {
+    console.log(`✓ ${file.path} already present`);
+    continue;
+  }
   process.stdout.write(`↓ ${file.path} … `);
   const response = await fetch(file.url);
   if (!response.ok) {
@@ -70,14 +77,19 @@ const require = createRequire(import.meta.url);
 const ortDist = dirname(require.resolve("onnxruntime-web"));
 const ortOut = join(outDir, "ort");
 await mkdir(ortOut, { recursive: true });
-let copied = 0;
-for (const file of await readdir(ortDist)) {
-  if (/\.(wasm|mjs)$/.test(file)) {
-    await cp(join(ortDist, file), join(ortOut, file));
-    copied++;
-  }
+// Only the runtimes the segment worker can actually select: the plain build
+// (wasm EP) and the JSEP build (webgpu EP). The asyncify/jspi variants would
+// add ~60 MB to every deployment for nothing.
+const ORT_FILES = [
+  "ort-wasm-simd-threaded.mjs",
+  "ort-wasm-simd-threaded.wasm",
+  "ort-wasm-simd-threaded.jsep.mjs",
+  "ort-wasm-simd-threaded.jsep.wasm",
+];
+for (const file of ORT_FILES) {
+  await cp(join(ortDist, file), join(ortOut, file));
 }
-console.log(`✓ copied ${copied} onnxruntime-web runtime files to models/ort/`);
+console.log(`✓ copied ${ORT_FILES.length} onnxruntime-web runtime files to models/ort/`);
 
 console.log(
   "\nDone. Add these to apps/web/.env.local:\n" +
