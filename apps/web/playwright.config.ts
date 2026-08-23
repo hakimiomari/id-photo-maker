@@ -13,7 +13,15 @@ export default defineConfig({
     trace: "on-first-retry",
   },
   projects: [
-    { name: "chromium", use: { ...devices["Desktop Chrome"] } },
+    {
+      name: "chromium",
+      use: {
+        ...devices["Desktop Chrome"],
+        // PW_CHANNEL=chrome runs on the system browser — handy on machines
+        // that have not downloaded Playwright's own Chromium.
+        ...(process.env.PW_CHANNEL ? { channel: process.env.PW_CHANNEL } : {}),
+      },
+    },
   ],
   webServer: {
     command: `pnpm start -p ${PORT}`,
