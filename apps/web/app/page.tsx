@@ -8,6 +8,7 @@ import { Editor } from "../components/Editor";
 import { ExportPanel } from "../components/ExportPanel";
 import { FamilyPanel } from "../components/FamilyPanel";
 import { FormatPicker } from "../components/FormatPicker";
+import { RetouchPanel } from "../components/RetouchPanel";
 import { SheetPanel } from "../components/SheetPanel";
 import { Uploader } from "../components/Uploader";
 import { ValidationPanel } from "../components/ValidationPanel";
@@ -155,6 +156,9 @@ export default function Home() {
               </section>
               <section className="card p-5">
                 <BackgroundPanel />
+              </section>
+              <section className="card p-5">
+                <RetouchPanel />
               </section>
               <section className="card p-5">
                 <ExportPanel />

@@ -41,6 +41,7 @@ export const photoFormatSchema = z
       "red",
     ]),
     digital_spec: digitalSpecSchema.optional(),
+    retouch: z.enum(["strict", "lenient"]),
     source_url: z
       .string()
       .refine(

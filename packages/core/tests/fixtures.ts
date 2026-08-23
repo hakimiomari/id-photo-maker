@@ -84,6 +84,7 @@ export function makeFormat(overrides: Partial<PhotoFormat> = {}): PhotoFormat {
     min_dpi: 300,
     target_dpi: 600,
     background: "white",
+    retouch: "lenient",
     source_url: "internal:generic-format",
     verified_date: "2026-01-01",
     verification_status: "seeded",

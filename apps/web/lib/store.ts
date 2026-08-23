@@ -29,6 +29,7 @@ import {
 } from "@photomaker/core";
 import { track } from "./analytics";
 import { faceLandmarkerConfig, segmentConfig } from "./config";
+import type { AttireTransform, RetouchOp } from "@photomaker/core";
 import type {
   BatchSheetRequest,
   BatchSheetResponse,
@@ -39,6 +40,7 @@ import type {
   MattePayload,
   PrecheckRequest,
   PrecheckResponse,
+  RetouchPayload,
   SegmentRequest,
   SegmentResponse,
   SheetRequest,
@@ -72,6 +74,11 @@ export interface BatchMember {
   /** Small data-URL preview for the member list. */
   thumbUrl: string;
   formatId: string;
+  /**
+   * The person's original photo, kept so they can be reloaded into the
+   * editor for further work (re-crop, retouch, different format…).
+   */
+  original: File | null;
 }
 
 interface PhotoState {
@@ -120,6 +127,25 @@ interface PhotoState {
   batchBusy: boolean;
 
   /**
+   * Manual retouch (heal/smooth brushes, uploaded attire overlay). Only
+   * offered on formats whose registry policy is "lenient" — biometric
+   * documents reject digitally altered photos.
+   */
+  retouch: {
+    tool: "none" | "heal" | "smooth" | "attire";
+    ops: RetouchOp[];
+    /** Brush radius in working px. */
+    brushRadius: number;
+    /** Smoothing strength, capped ≤ 0.7 so results stay natural. */
+    smoothStrength: number;
+    attire: {
+      bytes: ArrayBuffer;
+      bitmap: ImageBitmap;
+      transform: AttireTransform;
+    } | null;
+  };
+
+  /**
    * Derived state, recomputed once per change rather than per read.
    *
    * These must be stored values, not methods: zustand v5 runs the selector on
@@ -149,9 +175,20 @@ interface PhotoState {
   }) => Promise<void>;
   exportSheet: (output: "jpeg" | "pdf") => Promise<void>;
   addToBatch: () => Promise<void>;
+  /** Reload a collected member into the editor (tap or drag-and-drop). */
+  loadBatchMember: (id: number) => Promise<void>;
   removeBatchMember: (id: number) => void;
   clearBatch: () => void;
   exportFamilySheet: (output: "jpeg" | "pdf") => Promise<void>;
+  setRetouchTool: (tool: "none" | "heal" | "smooth" | "attire") => void;
+  addRetouchOp: (op: RetouchOp) => void;
+  undoRetouch: () => void;
+  clearRetouch: () => void;
+  setBrushRadius: (radius: number) => void;
+  setSmoothStrength: (strength: number) => void;
+  setAttire: (file: File) => Promise<void>;
+  setAttireTransform: (patch: Partial<AttireTransform>) => void;
+  removeAttire: () => void;
   removeBackground: () => Promise<void>;
   clearBackground: () => void;
   /** Re-run the pixel scan for the selected face (automatic on load/face/mask changes). */
@@ -212,6 +249,9 @@ export async function detectFrame(bitmap: ImageBitmap): Promise<DetectedFace[]> 
     return [];
   }
 }
+
+/** Drag payload type for family-sheet members (dropzone ↔ panels). */
+export const MEMBER_DRAG_TYPE = "application/x-photomaker-member";
 
 /** The fill a format's spec asks for; white when unregulated. */
 export function requiredFill(background: PhotoFormat["background"]): string {
@@ -328,6 +368,26 @@ function buildMatte(state: PhotoState): MattePayload | null {
   };
 }
 
+/** Retouch payload for exports — copies, so the preview keeps its state. */
+function buildRetouch(state: PhotoState): RetouchPayload | null {
+  const { ops, attire } = state.retouch;
+  if (ops.length === 0 && !attire) return null;
+  return {
+    ops: ops.map((op) =>
+      op.kind === "heal" ? { ...op } : { ...op, points: op.points.slice() },
+    ),
+    scale: state.sourceScale,
+    ...(attire
+      ? {
+          attire: {
+            bytes: attire.bytes.slice(0),
+            transform: { ...attire.transform },
+          },
+        }
+      : {}),
+  };
+}
+
 export const usePhotoStore = create<PhotoState>((set, get) => {
   /** set(), then recompute anything derived from the new state. */
   const setDerived = (
@@ -363,6 +423,13 @@ export const usePhotoStore = create<PhotoState>((set, get) => {
     metricsPending: false,
     batch: [],
     batchBusy: false,
+    retouch: {
+      tool: "none",
+      ops: [],
+      brushRadius: 14,
+      smoothStrength: 0.5,
+      attire: null,
+    },
 
     format: () => getFormat(get().formatId),
 
@@ -418,6 +485,10 @@ export const usePhotoStore = create<PhotoState>((set, get) => {
         mask: null,
         maskSize: null,
         background: { fill: null, feather: 1, showOriginal: false },
+      });
+      get().retouch.attire?.bitmap.close();
+      set({
+        retouch: { tool: "none", ops: [], brushRadius: 14, smoothStrength: 0.5, attire: null },
       });
 
       try {
@@ -582,6 +653,7 @@ export const usePhotoStore = create<PhotoState>((set, get) => {
       set({ exporting: true, error: null, errorCode: null });
 
       const matte = buildMatte(state);
+      const retouchPayload = buildRetouch(state);
 
       try {
         // The bitmap is transferred into the worker and handed back with the
@@ -596,6 +668,7 @@ export const usePhotoStore = create<PhotoState>((set, get) => {
             mimeType,
             adjustments: state.image,
             ...(matte ? { matte } : {}),
+            ...(retouchPayload ? { retouch: retouchPayload } : {}),
             ...(digitalSpec
               ? {
                   digital: {
@@ -671,6 +744,7 @@ export const usePhotoStore = create<PhotoState>((set, get) => {
       set({ exporting: true, error: null, errorCode: null });
 
       const matte = buildMatte(state);
+      const retouchPayload = buildRetouch(state);
 
       try {
         const response = await encodeWorker().send(
@@ -684,6 +758,7 @@ export const usePhotoStore = create<PhotoState>((set, get) => {
             output,
             adjustments: state.image,
             ...(matte ? { matte } : {}),
+            ...(retouchPayload ? { retouch: retouchPayload } : {}),
           },
           [source],
         );
@@ -764,6 +839,7 @@ export const usePhotoStore = create<PhotoState>((set, get) => {
             mimeType: "image/jpeg",
             adjustments: state.image,
             ...(matte ? { matte } : {}),
+            ...(buildRetouch(state) ? { retouch: buildRetouch(state)! } : {}),
           },
           [source],
         );
@@ -787,6 +863,7 @@ export const usePhotoStore = create<PhotoState>((set, get) => {
           jpeg,
           thumbUrl: await makeThumb(jpeg),
           formatId: format.id,
+          original: get().file,
         };
         set((current) => ({
           batchBusy: false,
@@ -806,6 +883,17 @@ export const usePhotoStore = create<PhotoState>((set, get) => {
               : "Adding to the family sheet failed. Please try again.",
         });
       }
+    },
+
+    loadBatchMember: async (id) => {
+      const member = get().batch.find((m) => m.id === id);
+      if (!member) return;
+      // Prefer the person's original photo (full re-editing freedom); fall
+      // back to their rendered result.
+      const file =
+        member.original ??
+        new File([member.jpeg], `${member.label}.jpg`, { type: "image/jpeg" });
+      await get().loadFile(file);
     },
 
     removeBatchMember: (id) =>
@@ -868,6 +956,102 @@ export const usePhotoStore = create<PhotoState>((set, get) => {
               : "The family sheet export failed. Please try again.",
         });
       }
+    },
+
+    setRetouchTool: (tool) =>
+      set((state) => ({ retouch: { ...state.retouch, tool } })),
+
+    addRetouchOp: (op) =>
+      set((state) => ({
+        retouch: { ...state.retouch, ops: [...state.retouch.ops, op] },
+      })),
+
+    undoRetouch: () =>
+      set((state) => ({
+        retouch: { ...state.retouch, ops: state.retouch.ops.slice(0, -1) },
+      })),
+
+    clearRetouch: () => {
+      get().retouch.attire?.bitmap.close();
+      set((state) => ({
+        retouch: { ...state.retouch, ops: [], attire: null, tool: "none" },
+      }));
+    },
+
+    setBrushRadius: (radius) =>
+      set((state) => ({ retouch: { ...state.retouch, brushRadius: radius } })),
+
+    setSmoothStrength: (strength) =>
+      set((state) => ({
+        retouch: { ...state.retouch, smoothStrength: Math.min(0.7, strength) },
+      })),
+
+    setAttire: async (file) => {
+      const state = get();
+      if (!state.workingSize) return;
+      try {
+        const bytes = await file.arrayBuffer();
+        const bitmap = await createImageBitmap(new Blob([bytes]));
+        state.retouch.attire?.bitmap.close();
+        // Anatomical default: centred on the face midline, hanging from just
+        // below the chin, about a head wide — tie/collar territory that is
+        // visible inside any format's crop. The user fine-tunes from there.
+        const head = state.head;
+        const headHeight = head ? head.yChin - head.yCrown : 0;
+        const width = head
+          ? (head.xRight - head.xLeft) * 1.2
+          : state.workingSize.width * 0.5;
+        const aspect = bitmap.height / bitmap.width;
+        set((current) => ({
+          retouch: {
+            ...current.retouch,
+            tool: "attire",
+            attire: {
+              bytes,
+              bitmap,
+              transform: {
+                cx: head ? head.xMidline : current.workingSize!.width / 2,
+                // Top edge just under the chin (5 % of head height) — a tie
+                // knot sits at the collar, and tight formats crop barely a few
+                // mm below the chin, so anything lower starts off-screen.
+                cy: head
+                  ? head.yChin + headHeight * 0.05 + (width * aspect) / 2
+                  : current.workingSize!.height * 0.85,
+                width,
+                rotation: 0,
+              },
+            },
+          },
+        }));
+      } catch {
+        set({ error: "That image could not be opened.", errorCode: "decode-failed" });
+      }
+    },
+
+    setAttireTransform: (patch) =>
+      set((state) =>
+        state.retouch.attire
+          ? {
+              retouch: {
+                ...state.retouch,
+                attire: {
+                  ...state.retouch.attire,
+                  transform: { ...state.retouch.attire.transform, ...patch },
+                },
+              },
+            }
+          : {},
+      ),
+
+    removeAttire: () => {
+      get().retouch.attire?.bitmap.close();
+      set((state) => ({
+        retouch: {
+          ...state.retouch,
+          attire: null,
+          tool: state.retouch.tool === "attire" ? "none" : state.retouch.tool,
+        },
+      }));
     },
 
     removeBackground: async () => {
@@ -978,6 +1162,10 @@ export const usePhotoStore = create<PhotoState>((set, get) => {
         maskSize: null,
         segmenting: false,
         background: { fill: null, feather: 1, showOriginal: false },
+      });
+      get().retouch.attire?.bitmap.close();
+      set({
+        retouch: { tool: "none", ops: [], brushRadius: 14, smoothStrength: 0.5, attire: null },
       });
     },
   };

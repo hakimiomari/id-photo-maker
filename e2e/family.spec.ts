@@ -8,6 +8,7 @@ import { expect, test } from "@playwright/test";
 
 test("two people → one family sheet, byte-verified", async ({ page, request }) => {
   test.setTimeout(120_000);
+  const panel = () => page.locator('section[aria-label="Family sheet"]');
 
   const model = await request.get("/models/face_landmarker.task");
   test.skip(!model.ok(), "Self-hosted model missing — run fetch:models");
@@ -20,12 +21,39 @@ test("two people → one family sheet, byte-verified", async ({ page, request })
     timeout: 60_000,
   });
   await page.getByRole("button", { name: "Add this photo to a family sheet" }).click();
-  await expect(page.getByText("Person 1")).toBeVisible({ timeout: 30_000 });
+  await expect(panel().getByText("Person 1")).toBeVisible({ timeout: 30_000 });
 
   // Load the next person — the batch must survive the reset.
   await page.getByRole("button", { name: /Add another person/ }).click();
   await expect(page.getByRole("button", { name: "Try a sample photo" })).toBeVisible();
-  await expect(page.getByText("Person 1")).toBeVisible();
+  await expect(panel().getByText("Person 1")).toBeVisible();
+
+  // Collected members are reloadable from the uploader for further editing —
+  // by drag-and-drop onto the dropzone (desktop) as well as by tap.
+  await expect(page.getByText(/From your family sheet/)).toBeVisible();
+  await page.evaluate(() => {
+    const transfer = new DataTransfer();
+    transfer.setData("application/x-photomaker-member", "1");
+    document
+      .querySelector(".border-dashed")!
+      .dispatchEvent(
+        new DragEvent("drop", { bubbles: true, cancelable: true, dataTransfer: transfer }),
+      );
+  });
+  await expect(page.getByRole("button", { name: "Use another photo" })).toBeVisible({
+    timeout: 60_000,
+  });
+  await page.getByRole("button", { name: /Add another person/ }).click();
+  await page.getByRole("button", { name: "Person 1", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Use another photo" })).toBeVisible({
+    timeout: 60_000,
+  });
+  // Their photo is back in the editor; the batch entry itself is untouched.
+  await expect(page.getByText(/Head height: [\d.]+ mm/)).toBeVisible();
+  await expect(panel().getByText("Person 1")).toBeVisible();
+
+  // Back to the uploader for the real second person.
+  await page.getByRole("button", { name: /Add another person/ }).click();
 
   // Person 2
   await page.getByRole("button", { name: "Try a sample photo" }).click();
@@ -33,7 +61,7 @@ test("two people → one family sheet, byte-verified", async ({ page, request })
     timeout: 60_000,
   });
   await page.getByRole("button", { name: "Add this photo too" }).click();
-  await expect(page.getByText("Person 2")).toBeVisible({ timeout: 30_000 });
+  await expect(panel().getByText("Person 2")).toBeVisible({ timeout: 30_000 });
 
   // Fair split is stated up front: 9-up 3×4 sheet → 5 + 4.
   await expect(page.getByText(/2 people/)).toBeVisible();
