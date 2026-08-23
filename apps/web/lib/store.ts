@@ -175,6 +175,8 @@ interface PhotoState {
   }) => Promise<void>;
   exportSheet: (output: "jpeg" | "pdf") => Promise<void>;
   addToBatch: () => Promise<void>;
+  /** Reload a collected member into the editor (tap or drag-and-drop). */
+  loadBatchMember: (id: number) => Promise<void>;
   removeBatchMember: (id: number) => void;
   clearBatch: () => void;
   exportFamilySheet: (output: "jpeg" | "pdf") => Promise<void>;
@@ -247,6 +249,9 @@ export async function detectFrame(bitmap: ImageBitmap): Promise<DetectedFace[]> 
     return [];
   }
 }
+
+/** Drag payload type for family-sheet members (dropzone ↔ panels). */
+export const MEMBER_DRAG_TYPE = "application/x-photomaker-member";
 
 /** The fill a format's spec asks for; white when unregulated. */
 export function requiredFill(background: PhotoFormat["background"]): string {
@@ -878,6 +883,17 @@ export const usePhotoStore = create<PhotoState>((set, get) => {
               : "Adding to the family sheet failed. Please try again.",
         });
       }
+    },
+
+    loadBatchMember: async (id) => {
+      const member = get().batch.find((m) => m.id === id);
+      if (!member) return;
+      // Prefer the person's original photo (full re-editing freedom); fall
+      // back to their rendered result.
+      const file =
+        member.original ??
+        new File([member.jpeg], `${member.label}.jpg`, { type: "image/jpeg" });
+      await get().loadFile(file);
     },
 
     removeBatchMember: (id) =>

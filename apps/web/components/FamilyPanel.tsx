@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { assignCells, countsPerMember, getFormat, getPaper, layoutSheet, paperLabel } from "@photomaker/core";
 import { useT } from "../lib/i18n";
-import { usePhotoStore } from "../lib/store";
+import { MEMBER_DRAG_TYPE, usePhotoStore } from "../lib/store";
 import { ExportResultCard } from "./ResultCard";
 import { IconDownload, IconX } from "./icons";
 
@@ -63,7 +63,12 @@ export function FamilyPanel() {
           {batch.map((member) => (
             <li
               key={member.id}
-              className="flex items-center gap-3 rounded-control border border-line bg-surface p-2"
+              draggable
+              onDragStart={(event) => {
+                event.dataTransfer.setData(MEMBER_DRAG_TYPE, String(member.id));
+                event.dataTransfer.effectAllowed = "copy";
+              }}
+              className="flex cursor-grab items-center gap-3 rounded-control border border-line bg-surface p-2 active:cursor-grabbing"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img

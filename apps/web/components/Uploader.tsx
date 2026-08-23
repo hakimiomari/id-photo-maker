@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { cameraSupported } from "../lib/camera";
 import { localizeError, useT } from "../lib/i18n";
-import { usePhotoStore } from "../lib/store";
+import { MEMBER_DRAG_TYPE, usePhotoStore } from "../lib/store";
 import { CameraCapture } from "./CameraCapture";
 import { IconAlert, IconCamera, IconLock, IconUpload } from "./icons";
 
@@ -20,6 +20,7 @@ export function Uploader() {
   const status = usePhotoStore((s) => s.status);
   const error = usePhotoStore((s) => s.error);
   const batch = usePhotoStore((s) => s.batch);
+  const loadBatchMember = usePhotoStore((s) => s.loadBatchMember);
   const errorCode = usePhotoStore((s) => s.errorCode);
   const { t } = useT();
   const loading = status === "loading";
@@ -64,6 +65,12 @@ export function Uploader() {
         onDrop={(event) => {
           event.preventDefault();
           setDragging(false);
+          // A family-sheet member dragged in beats a file drop.
+          const memberId = event.dataTransfer.getData(MEMBER_DRAG_TYPE);
+          if (memberId) {
+            void loadBatchMember(Number(memberId));
+            return;
+          }
           handleFiles(event.dataTransfer.files);
         }}
         className={`flex min-h-[380px] flex-col items-center justify-center gap-4 rounded-card border-2 border-dashed px-6 py-12 text-center transition-all duration-200 ease-swift sm:min-h-[440px] ${
@@ -132,17 +139,13 @@ export function Uploader() {
                     disabled={loading}
                     aria-label={member.label}
                     title={member.label}
-                    onClick={() => {
-                      // Prefer the person's original photo (full re-editing
-                      // freedom); fall back to their rendered result.
-                      const file =
-                        member.original ??
-                        new File([member.jpeg], `${member.label}.jpg`, {
-                          type: "image/jpeg",
-                        });
-                      void loadFile(file);
+                    onClick={() => void loadBatchMember(member.id)}
+                    draggable
+                    onDragStart={(event) => {
+                      event.dataTransfer.setData(MEMBER_DRAG_TYPE, String(member.id));
+                      event.dataTransfer.effectAllowed = "copy";
                     }}
-                    className="group flex flex-col items-center gap-1"
+                    className="group flex cursor-grab flex-col items-center gap-1 active:cursor-grabbing"
                   >
                     <img
                       src={member.thumbUrl}
