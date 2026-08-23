@@ -133,6 +133,22 @@ New entries start at `verification_status: "seeded"`, which makes the UI show a
 weaker claim. Flipping one to `"verified"` means a human re-read `source_url`
 and confirmed every number — do not automate it.
 
+## Analytics (optional, off by default)
+
+Privacy-safe, cookieless, Plausible-compatible — and completely absent until
+configured. Set in the deployment environment:
+
+```
+NEXT_PUBLIC_ANALYTICS_DOMAIN=yourdomain.example   # your Plausible site id
+NEXT_PUBLIC_ANALYTICS_SRC=https://plausible.io/js/script.js   # optional override
+```
+
+Unset → no script loads, `track()` is a no-op, the CSP contains no analytics
+origin. Events carry closed enums and small counts only; `pnpm lint:privacy`
+fails CI if any event name is unlisted or any prop mentions photo-derived data
+(spec §7). Do Not Track and Global Privacy Control are honoured even though
+Plausible is cookieless.
+
 ## Gotchas
 
 **Never run `pnpm build` while `pnpm dev` is running.** They share `apps/web/.next`,

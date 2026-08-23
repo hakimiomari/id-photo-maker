@@ -4,6 +4,14 @@
 // and must not be given it.
 const isDev = process.env.NODE_ENV !== "production";
 
+// Analytics is opt-in via env; its origin joins the CSP only when set (§7).
+// Plausible's script POSTs events to /api/event on its own origin.
+const analyticsOrigin = process.env.NEXT_PUBLIC_ANALYTICS_DOMAIN
+  ? new URL(
+      process.env.NEXT_PUBLIC_ANALYTICS_SRC ?? "https://plausible.io/js/script.js",
+    ).origin
+  : null;
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -26,11 +34,11 @@ const nextConfig = {
               // the detect worker pulls in via importScripts() — importScripts
               // is governed by script-src, not connect-src. Once models are
               // self-hosted (pnpm fetch:models) this entry can be dropped.
-              `script-src 'self' 'wasm-unsafe-eval' 'unsafe-inline' https://cdn.jsdelivr.net${isDev ? " 'unsafe-eval'" : ""}`,
+              `script-src 'self' 'wasm-unsafe-eval' 'unsafe-inline' https://cdn.jsdelivr.net${analyticsOrigin ? ` ${analyticsOrigin}` : ""}${isDev ? " 'unsafe-eval'" : ""}`,
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' blob: data:",
               // Model files only. No endpoint accepts image data — by design.
-              "connect-src 'self' https://cdn.jsdelivr.net https://storage.googleapis.com",
+              `connect-src 'self' https://cdn.jsdelivr.net https://storage.googleapis.com${analyticsOrigin ? ` ${analyticsOrigin}` : ""}`,
               "worker-src 'self' blob:",
               "object-src 'none'",
               "base-uri 'self'",

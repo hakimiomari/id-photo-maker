@@ -259,7 +259,7 @@ export function CameraCapture({ onClose }: Props) {
     setCapturing(true);
     try {
       const file = await capturePhoto(video, session.track);
-      void loadFile(file);
+      void loadFile(file, "camera");
       onClose();
     } catch (err) {
       setCapturing(false);
