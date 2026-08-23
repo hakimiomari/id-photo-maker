@@ -31,3 +31,5 @@ export * from "./segment/compose";
 export * from "./compliance/pose";
 export * from "./compliance/imageMetrics";
 export * from "./compliance/evaluate";
+
+export * from "./capture/guidance";
