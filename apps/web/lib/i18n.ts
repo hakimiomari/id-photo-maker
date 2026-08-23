@@ -45,6 +45,7 @@ const en = {
     take: "Take a photo",
     sample: "No photo handy? Try a sample photo",
     privacy: "Your photo is processed on your device and never uploaded.",
+    fromBatch: "From your family sheet — tap or drag here to edit again",
   },
 
   picker: {
@@ -142,6 +143,28 @@ const en = {
     any: "a plain colour",
   } as Record<string, string>,
 
+  retouch: {
+    eyebrow: "Retouch",
+    lockedNote:
+      "Retouching is disabled for this document: the issuing authority rejects digitally altered photos. Available for CV and unofficial formats.",
+    intro: "Manual tools — you aim every change, nothing is altered automatically.",
+    heal: "Heal spots",
+    smooth: "Smooth skin",
+    attire: "Attire",
+    off: "Off",
+    healHint: "Tap a blemish to blend it into the surrounding skin.",
+    smoothHint: "Paint over skin to soften it. Keep it subtle.",
+    attireHint: "Drag to position. Use a PNG with transparency for best results.",
+    brushSize: "Brush size",
+    strength: "Strength",
+    uploadAttire: "Upload attire (tie, collar…)",
+    attireWidth: "Size",
+    attireRotation: "Rotation",
+    removeAttire: "Remove attire",
+    undo: "Undo",
+    clearAll: "Clear all retouching",
+    editsApplied: (n: number) => (n === 1 ? "1 edit" : `${n} edits`),
+  },
   adjust: {
     eyebrow: "Fine-tune",
     brightness: "Brightness",
@@ -307,6 +330,7 @@ const de: Dict = {
     take: "Foto aufnehmen",
     sample: "Kein Foto zur Hand? Beispielfoto ausprobieren",
     privacy: "Ihr Foto wird auf Ihrem Gerät verarbeitet und nie hochgeladen.",
+    fromBatch: "Aus Ihrem Familienbogen — antippen oder hierher ziehen, um erneut zu bearbeiten",
   },
 
   picker: {
@@ -404,6 +428,28 @@ const de: Dict = {
     any: "eine einfarbige Fläche",
   },
 
+  retouch: {
+    eyebrow: "Retusche",
+    lockedNote:
+      "Retusche ist für dieses Dokument deaktiviert: Die ausstellende Behörde lehnt digital veränderte Fotos ab. Verfügbar für Bewerbungsfotos und inoffizielle Formate.",
+    intro: "Manuelle Werkzeuge — Sie steuern jede Änderung, nichts passiert automatisch.",
+    heal: "Flecken entfernen",
+    smooth: "Haut glätten",
+    attire: "Kleidung",
+    off: "Aus",
+    healHint: "Tippen Sie auf eine Unreinheit, um sie an die umgebende Haut anzugleichen.",
+    smoothHint: "Über die Haut malen, um sie zu glätten. Dezent bleiben.",
+    attireHint: "Zum Positionieren ziehen. Am besten ein PNG mit Transparenz verwenden.",
+    brushSize: "Pinselgröße",
+    strength: "Stärke",
+    uploadAttire: "Kleidung hochladen (Krawatte, Kragen…)",
+    attireWidth: "Größe",
+    attireRotation: "Drehung",
+    removeAttire: "Kleidung entfernen",
+    undo: "Rückgängig",
+    clearAll: "Gesamte Retusche entfernen",
+    editsApplied: (n) => (n === 1 ? "1 Änderung" : `${n} Änderungen`),
+  },
   adjust: {
     eyebrow: "Feinjustierung",
     brightness: "Helligkeit",
@@ -564,6 +610,7 @@ const fa: Dict = {
     take: "گرفتن عکس",
     sample: "عکسی ندارید؟ عکس نمونه را امتحان کنید",
     privacy: "عکس شما روی دستگاه‌تان پردازش می‌شود و هرگز آپلود نمی‌شود.",
+    fromBatch: "از برگهٔ خانوادگی شما — برای ویرایش دوباره بزنید یا به اینجا بکشید",
   },
 
   picker: {
@@ -660,6 +707,28 @@ const fa: Dict = {
     any: "یک رنگ ساده",
   },
 
+  retouch: {
+    eyebrow: "روتوش",
+    lockedNote:
+      "روتوش برای این سند غیرفعال است: مرجع صادرکننده عکس‌های تغییر یافتهٔ دیجیتال را رد می‌کند. برای عکس CV و قالب‌های غیررسمی در دسترس است.",
+    intro: "ابزارهای دستی — هر تغییر را خودتان انجام می‌دهید، هیچ چیز خودکار تغییر نمی‌کند.",
+    heal: "حذف لکه",
+    smooth: "نرم کردن پوست",
+    attire: "لباس",
+    off: "خاموش",
+    healHint: "روی لکه بزنید تا با پوست اطراف یکدست شود.",
+    smoothHint: "روی پوست بکشید تا نرم شود. کم و طبیعی نگه دارید.",
+    attireHint: "برای جابه‌جایی بکشید. بهترین نتیجه با PNG شفاف است.",
+    brushSize: "اندازهٔ قلم",
+    strength: "شدت",
+    uploadAttire: "بارگذاری لباس (نکتایی، یقه…)",
+    attireWidth: "اندازه",
+    attireRotation: "چرخش",
+    removeAttire: "حذف لباس",
+    undo: "واگرد",
+    clearAll: "حذف همهٔ روتوش",
+    editsApplied: (n) => (n === 1 ? "1 تغییر" : `${n} تغییر`),
+  },
   adjust: {
     eyebrow: "تنظیم دقیق",
     brightness: "روشنایی",
@@ -820,6 +889,7 @@ const ps: Dict = {
     take: "عکس واخلئ",
     sample: "عکس نه لرئ؟ نمونه عکس وازمویئ",
     privacy: "ستاسو عکس ستاسو په وسیله کې پروسس کېږي او هېڅکله نه اپلوډ کېږي.",
+    fromBatch: "ستاسو د کورنۍ پاڼې څخه — د بیا سمون لپاره یې ټک ووهئ یا دلته راکش کړئ",
   },
 
   picker: {
@@ -915,6 +985,28 @@ const ps: Dict = {
     any: "یو ساده رنګ",
   },
 
+  retouch: {
+    eyebrow: "روتوش",
+    lockedNote:
+      "د دې سند لپاره روتوش بند دی: صادروونکې اداره ډیجیټل بدل شوي عکسونه ردوي. د CV عکس او غیر رسمي بڼو لپاره شته.",
+    intro: "لاسي وسایل — هر بدلون پخپله کوئ، هېڅ شی اتوماتیک نه بدلېږي.",
+    heal: "د داغ لرې کول",
+    smooth: "د پوستکي نرمول",
+    attire: "جامې",
+    off: "بند",
+    healHint: "پر داغ ټک ووهئ تر څو له شاوخوا پوستکي سره یو شان شي.",
+    smoothHint: "د پوستکي له پاسه یې وکاږئ تر څو نرم شي. لږ او طبیعي یې وساتئ.",
+    attireHint: "د ځای بدلولو لپاره یې راکش کړئ. غوره پایله د شفاف PNG سره ده.",
+    brushSize: "د برس اندازه",
+    strength: "شدت",
+    uploadAttire: "جامې پورته کړئ (نکټایي، غاړه…)",
+    attireWidth: "اندازه",
+    attireRotation: "تاوول",
+    removeAttire: "جامې لرې کړئ",
+    undo: "بېرته",
+    clearAll: "ټول روتوش لرې کړئ",
+    editsApplied: (n) => (n === 1 ? "1 بدلون" : `${n} بدلونونه`),
+  },
   adjust: {
     eyebrow: "دقیق سمون",
     brightness: "روښانتیا",

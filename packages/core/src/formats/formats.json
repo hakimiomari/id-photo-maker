@@ -21,7 +21,8 @@
       "source_url": "internal:generic-format",
       "verified_date": "2026-08-04",
       "verification_status": "seeded",
-      "notes": "Not an official standard. Head-height range is a widely used guide, not a regulation."
+      "notes": "Not an official standard. Head-height range is a widely used guide, not a regulation.",
+      "retouch": "lenient"
     },
     {
       "id": "generic-2x3",
@@ -43,7 +44,8 @@
       "source_url": "internal:generic-format",
       "verified_date": "2026-08-04",
       "verification_status": "seeded",
-      "notes": "Not an official standard. Head-height range is a guide only."
+      "notes": "Not an official standard. Head-height range is a guide only.",
+      "retouch": "lenient"
     },
     {
       "id": "generic-4x6cm",
@@ -65,7 +67,8 @@
       "source_url": "internal:generic-format",
       "verified_date": "2026-08-04",
       "verification_status": "seeded",
-      "notes": "Unregulated. Head height falls back to the default 75% of photo height."
+      "notes": "Unregulated. Head height falls back to the default 75% of photo height.",
+      "retouch": "lenient"
     },
     {
       "id": "eu-biometric-35x45",
@@ -97,7 +100,8 @@
       "source_url": "https://home-affairs.ec.europa.eu/policies/schengen-borders-and-visa/visa-policy_en",
       "verified_date": "2026-08-04",
       "verification_status": "seeded",
-      "notes": "ICAO-style biometric portrait used by Schengen visas and many national documents. Confirm the exact head range with the issuing authority."
+      "notes": "ICAO-style biometric portrait used by Schengen visas and many national documents. Confirm the exact head range with the issuing authority.",
+      "retouch": "strict"
     },
     {
       "id": "uk-passport",
@@ -121,7 +125,8 @@
       "source_url": "https://www.gov.uk/photos-for-passports",
       "verified_date": "2026-08-04",
       "verification_status": "seeded",
-      "notes": "A separate digital upload spec exists for online applications; not yet modelled here."
+      "notes": "A separate digital upload spec exists for online applications; not yet modelled here.",
+      "retouch": "strict"
     },
     {
       "id": "us-passport",
@@ -155,7 +160,8 @@
       "source_url": "https://travel.state.gov/content/travel/en/passports/how-apply/photos.html",
       "verified_date": "2026-08-04",
       "verification_status": "seeded",
-      "notes": "2 × 2 inch. Head 1–1⅜ in; eyes 1⅛–1⅜ in from the bottom edge. Digital uploads (DS-160) accept 600×600 to 1200×1200 px."
+      "notes": "2 × 2 inch. Head 1–1⅜ in; eyes 1⅛–1⅜ in from the bottom edge. Digital uploads (DS-160) accept 600×600 to 1200×1200 px.",
+      "retouch": "strict"
     },
     {
       "id": "cn-visa",
@@ -185,7 +191,8 @@
       "source_url": "https://bio.visaforchina.cn/",
       "verified_date": "2026-08-04",
       "verification_status": "seeded",
-      "notes": "Online application photos are typically 354×472 px, 40–120 KB."
+      "notes": "Online application photos are typically 354×472 px, 40–120 KB.",
+      "retouch": "strict"
     },
     {
       "id": "in-passport",
@@ -209,7 +216,8 @@
       "source_url": "https://www.passportindia.gov.in/",
       "verified_date": "2026-08-04",
       "verification_status": "seeded",
-      "notes": "Spec states the head must occupy 60–70% of the frame height; converted to 30.6–35.7 mm."
+      "notes": "Spec states the head must occupy 60–70% of the frame height; converted to 30.6–35.7 mm.",
+      "retouch": "strict"
     },
     {
       "id": "ca-passport",
@@ -232,7 +240,8 @@
       "background": "white",
       "source_url": "https://www.canada.ca/en/immigration-refugees-citizenship/services/canadian-passports/photos.html",
       "verified_date": "2026-08-04",
-      "verification_status": "seeded"
+      "verification_status": "seeded",
+      "retouch": "strict"
     },
     {
       "id": "de-fuehrerschein",
@@ -256,7 +265,8 @@
       "source_url": "https://www.bundesdruckerei.de/de/fotomustertafel",
       "verified_date": "2026-08-04",
       "verification_status": "seeded",
-      "notes": "Paper photos are still accepted for driving licences. Personalausweis and Reisepass require digital transmission from a certified provider since 2025 and cannot be produced with this app."
+      "notes": "Paper photos are still accepted for driving licences. Personalausweis and Reisepass require digital transmission from a certified provider since 2025 and cannot be produced with this app.",
+      "retouch": "strict"
     },
     {
       "id": "cv-photo",
@@ -278,7 +288,8 @@
       "source_url": "internal:generic-format",
       "verified_date": "2026-08-04",
       "verification_status": "seeded",
-      "notes": "Non-official format. Framing is looser than for documents."
+      "notes": "Non-official format. Framing is looser than for documents.",
+      "retouch": "lenient"
     },
     {
       "id": "jp-passport",
@@ -302,7 +313,8 @@
       "source_url": "https://www.mofa.go.jp/mofaj/toko/passport/ic_photo.html",
       "verified_date": "2026-08-05",
       "verification_status": "seeded",
-      "notes": "MOFA spec: 35×45 mm, head 34 ± 2 mm, crown-to-top margin 4 ± 2 mm, plain light background."
+      "notes": "MOFA spec: 35×45 mm, head 34 ± 2 mm, crown-to-top margin 4 ± 2 mm, plain light background.",
+      "retouch": "strict"
     },
     {
       "id": "kr-passport",
@@ -326,7 +338,8 @@
       "source_url": "https://www.passport.go.kr/home/kor/contents.do?menuPos=35",
       "verified_date": "2026-08-05",
       "verification_status": "seeded",
-      "notes": "35×45 mm, face 32–36 mm, white background, taken within the last 6 months."
+      "notes": "35×45 mm, face 32–36 mm, white background, taken within the last 6 months.",
+      "retouch": "strict"
     },
     {
       "id": "us-dv-lottery",
@@ -360,7 +373,8 @@
       "source_url": "https://dvprogram.state.gov/",
       "verified_date": "2026-08-05",
       "verification_status": "seeded",
-      "notes": "Digital entry only: 600×600 px JPEG, max 240 KB. Print geometry mirrors the US passport photo."
+      "notes": "Digital entry only: 600×600 px JPEG, max 240 KB. Print geometry mirrors the US passport photo.",
+      "retouch": "strict"
     }
   ]
 }

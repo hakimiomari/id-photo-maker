@@ -44,6 +44,12 @@ export interface PhotoFormat {
   target_dpi: number;
   background: BackgroundSpec;
   digital_spec?: DigitalSpec;
+  /**
+   * Whether manual retouching tools (heal, smoothing, attire) are permitted.
+   * "strict" formats (biometric documents) lock them: authorities reject
+   * digitally altered photos. "lenient" (CV, unofficial) allows them.
+   */
+  retouch: "strict" | "lenient";
   source_url: string;
   /** ISO date the spec was last checked against source_url. */
   verified_date: string;

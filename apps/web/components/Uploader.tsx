@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { cameraSupported } from "../lib/camera";
 import { localizeError, useT } from "../lib/i18n";
-import { usePhotoStore } from "../lib/store";
+import { MEMBER_DRAG_TYPE, usePhotoStore } from "../lib/store";
 import { CameraCapture } from "./CameraCapture";
 import { IconAlert, IconCamera, IconLock, IconUpload } from "./icons";
 
@@ -19,6 +19,8 @@ export function Uploader() {
   const loadFile = usePhotoStore((s) => s.loadFile);
   const status = usePhotoStore((s) => s.status);
   const error = usePhotoStore((s) => s.error);
+  const batch = usePhotoStore((s) => s.batch);
+  const loadBatchMember = usePhotoStore((s) => s.loadBatchMember);
   const errorCode = usePhotoStore((s) => s.errorCode);
   const { t } = useT();
   const loading = status === "loading";
@@ -63,6 +65,12 @@ export function Uploader() {
         onDrop={(event) => {
           event.preventDefault();
           setDragging(false);
+          // A family-sheet member dragged in beats a file drop.
+          const memberId = event.dataTransfer.getData(MEMBER_DRAG_TYPE);
+          if (memberId) {
+            void loadBatchMember(Number(memberId));
+            return;
+          }
           handleFiles(event.dataTransfer.files);
         }}
         className={`flex min-h-[380px] flex-col items-center justify-center gap-4 rounded-card border-2 border-dashed px-6 py-12 text-center transition-all duration-200 ease-swift sm:min-h-[440px] ${
@@ -117,6 +125,40 @@ export function Uploader() {
         >
           {t.uploader.sample}
         </button>
+
+        {batch.length > 0 && (
+          <div className="mt-1 w-full max-w-sm rounded-control border border-line bg-canvas p-3">
+            <p className="mb-2 text-xs font-medium text-ink-muted">
+              {t.uploader.fromBatch}
+            </p>
+            <ul className="flex flex-wrap justify-center gap-2">
+              {batch.map((member) => (
+                <li key={member.id}>
+                  <button
+                    type="button"
+                    disabled={loading}
+                    aria-label={member.label}
+                    title={member.label}
+                    onClick={() => void loadBatchMember(member.id)}
+                    draggable
+                    onDragStart={(event) => {
+                      event.dataTransfer.setData(MEMBER_DRAG_TYPE, String(member.id));
+                      event.dataTransfer.effectAllowed = "copy";
+                    }}
+                    className="group flex cursor-grab flex-col items-center gap-1 active:cursor-grabbing"
+                  >
+                    <img
+                      src={member.thumbUrl}
+                      alt=""
+                      className="h-14 w-auto rounded-[5px] border border-line-strong transition-transform duration-150 group-hover:scale-105"
+                    />
+                    <span className="text-[11px] text-ink-faint">{member.label}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         <p className="mt-2 inline-flex items-center gap-1.5 text-xs text-ink-faint">
           <IconLock className="h-3.5 w-3.5" />
