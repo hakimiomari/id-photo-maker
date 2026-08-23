@@ -5,7 +5,9 @@
       "id": "generic-3x4",
       "label": {
         "en": "3 × 4 cm photo",
-        "de": "3 × 4 cm Foto"
+        "de": "3 × 4 cm Foto",
+        "fa": "عکس 3 × 4 سانتی‌متر",
+        "ps": "د 3 × 4 سانتي متره عکس"
       },
       "category": "generic",
       "countries": [],
@@ -25,7 +27,9 @@
       "id": "generic-2x3",
       "label": {
         "en": "2 × 3 cm photo",
-        "de": "2 × 3 cm Foto"
+        "de": "2 × 3 cm Foto",
+        "fa": "عکس 2 × 3 سانتی‌متر",
+        "ps": "د 2 × 3 سانتي متره عکس"
       },
       "category": "generic",
       "countries": [],
@@ -45,7 +49,9 @@
       "id": "generic-4x6cm",
       "label": {
         "en": "4 × 6 cm photo",
-        "de": "4 × 6 cm Foto"
+        "de": "4 × 6 cm Foto",
+        "fa": "عکس 4 × 6 سانتی‌متر",
+        "ps": "د 4 × 6 سانتي متره عکس"
       },
       "category": "generic",
       "countries": [],
@@ -65,7 +71,9 @@
       "id": "eu-biometric-35x45",
       "label": {
         "en": "Biometric 35 × 45 mm",
-        "de": "Biometrisch 35 × 45 mm"
+        "de": "Biometrisch 35 × 45 mm",
+        "fa": "بیومتریک 35 × 45 میلی‌متر",
+        "ps": "بایومتریک 35 × 45 ملي متره"
       },
       "category": "passport",
       "countries": [
@@ -95,7 +103,9 @@
       "id": "uk-passport",
       "label": {
         "en": "UK passport",
-        "de": "Britischer Reisepass"
+        "de": "Britischer Reisepass",
+        "fa": "پاسپورت بریتانیا",
+        "ps": "د بریتانیا پاسپورټ"
       },
       "category": "passport",
       "countries": [
@@ -117,7 +127,9 @@
       "id": "us-passport",
       "label": {
         "en": "US passport / visa",
-        "de": "US-Reisepass / Visum"
+        "de": "US-Reisepass / Visum",
+        "fa": "پاسپورت / ویزای امریکا",
+        "ps": "د امریکا پاسپورټ / ویزه"
       },
       "category": "passport",
       "countries": [
@@ -149,7 +161,9 @@
       "id": "cn-visa",
       "label": {
         "en": "China visa",
-        "de": "China-Visum"
+        "de": "China-Visum",
+        "fa": "ویزای چین",
+        "ps": "د چین ویزه"
       },
       "category": "visa",
       "countries": [
@@ -177,7 +191,9 @@
       "id": "in-passport",
       "label": {
         "en": "India passport",
-        "de": "Indischer Reisepass"
+        "de": "Indischer Reisepass",
+        "fa": "پاسپورت هند",
+        "ps": "د هند پاسپورټ"
       },
       "category": "passport",
       "countries": [
@@ -199,7 +215,9 @@
       "id": "ca-passport",
       "label": {
         "en": "Canada passport",
-        "de": "Kanadischer Reisepass"
+        "de": "Kanadischer Reisepass",
+        "fa": "پاسپورت کانادا",
+        "ps": "د کاناډا پاسپورټ"
       },
       "category": "passport",
       "countries": [
@@ -220,7 +238,9 @@
       "id": "de-fuehrerschein",
       "label": {
         "en": "German driving licence",
-        "de": "Führerschein"
+        "de": "Führerschein",
+        "fa": "جواز رانندگی آلمان",
+        "ps": "د آلمان د موټر چلونې جواز"
       },
       "category": "license",
       "countries": [
@@ -242,7 +262,9 @@
       "id": "cv-photo",
       "label": {
         "en": "CV / résumé photo",
-        "de": "Bewerbungsfoto"
+        "de": "Bewerbungsfoto",
+        "fa": "عکس خلص سوانح (CV)",
+        "ps": "د CV عکس"
       },
       "category": "other",
       "countries": [],
@@ -262,7 +284,9 @@
       "id": "jp-passport",
       "label": {
         "en": "Japan passport",
-        "de": "Japanischer Reisepass"
+        "de": "Japanischer Reisepass",
+        "fa": "پاسپورت جاپان",
+        "ps": "د جاپان پاسپورټ"
       },
       "category": "passport",
       "countries": [
@@ -284,7 +308,9 @@
       "id": "kr-passport",
       "label": {
         "en": "South Korea passport",
-        "de": "Südkoreanischer Reisepass"
+        "de": "Südkoreanischer Reisepass",
+        "fa": "پاسپورت کوریای جنوبی",
+        "ps": "د سویلي کوریا پاسپورټ"
       },
       "category": "passport",
       "countries": [
@@ -306,7 +332,9 @@
       "id": "us-dv-lottery",
       "label": {
         "en": "US Green Card lottery (DV)",
-        "de": "US Green-Card-Lotterie (DV)"
+        "de": "US Green-Card-Lotterie (DV)",
+        "fa": "لاتری گرین کارت امریکا (DV)",
+        "ps": "د امریکا ګرین کارت لاتري (DV)"
       },
       "category": "visa",
       "countries": [
