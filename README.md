@@ -17,7 +17,7 @@ enforced in CI (`pnpm lint:privacy`), not just promised.
 | 1 | Ingest → detect → crop solver → adjust UI → JPEG/PNG export **with DPI metadata** | ✅ done |
 | 2 | Print sheet + PDF, SEO pages EN/DE, PWA/offline (e2e-verified), sample-photo demo, 14 formats | ✅ done |
 | 3 | Background removal (MODNet/ONNX, WebGPU→WASM), fills, feather, mask-refined crown | ✅ done |
-| 4 | Compliance pre-check, camera capture, batch mode, i18n, Pro tier | ⬜ |
+| 4 | Compliance pre-check ✅ · camera capture ⬜ · batch mode ⬜ · i18n ⬜ · Pro tier ⬜ | 🔄 |
 
 Background removal needs the self-hosted models: run
 `pnpm --filter @photomaker/web fetch:models` (downloads MODNet ~25 MB and
@@ -44,8 +44,9 @@ pnpm --filter @photomaker/web fetch:models
 ## Commands
 
 ```bash
-pnpm test           # 129 unit tests in packages/core
+pnpm test           # 171 unit tests in packages/core
 pnpm e2e            # 13 Playwright browser tests, incl. full-pipeline + offline
+                    #   (PW_CHANNEL=chrome runs them on the system browser)
 pnpm typecheck
 pnpm build
 pnpm lint:privacy   # fails if any network primitive appears in packages/core
@@ -60,11 +61,12 @@ packages/core/          @photomaker/core — framework-agnostic TypeScript
   src/sheet/            print-sheet tiler, sheet renderer, PDF builder, papers
   src/ingest/           decode, EXIF orientation, downscale, canvas helpers
   src/detect/           MediaPipe wrapper, chin/crown estimation
+  src/compliance/       pre-check: pose from landmarks, pixel metrics, evaluator
   src/render/           canvas render pipeline
   src/export/           encode + JPEG JFIF / PNG pHYs density injection
   tests/                Vitest — geometry and byte-level metadata tests
 apps/web/               Next.js 15 App Router UI
-  workers/              detect + encode Web Workers
+  workers/              detect, segment, precheck + encode Web Workers
   lib/                  zustand store, typed worker protocol, overlay drawing
 scripts/                CI privacy gate
 ```
@@ -81,6 +83,28 @@ density information, so a print service would assume 72 DPI and print a 35 × 45
 photo about eight times too large. Every export goes through `encodeCanvas()`,
 which patches the JPEG JFIF APP0 segment or inserts a PNG `pHYs` chunk. Both are
 verified byte-for-byte in tests.
+
+## Compliance pre-check
+
+`packages/core/src/compliance/` adds a "Photo quality" checklist next to the
+framing checks: head roll and yaw, eyes open, mouth closed (from the face mesh),
+plus exposure, one-sided lighting, sharpness and background uniformity/colour
+(from a pixel scan in `precheck.worker.ts`). The crop solver also gained a
+horizontal-centring check.
+
+Two rules keep it honest:
+
+- **Measurements and verdicts are separate.** The worker returns numbers
+  (`ImageMetrics`); `evaluateCompliance()` turns them into items. Changing the
+  format or the background fill re-derives the report without a rescan.
+- **Quality checks never block.** They are heuristics, so the report is capped
+  at `warn`. Only the geometry checks can say "Not within spec" and disable the
+  download. The bundled sample (a smile and a busy backdrop) is the reference
+  case: it must read "Usable, with warnings", never "Not within spec".
+
+Thresholds live in `evaluate.ts` and nowhere else. The sharpness score is
+calibrated against the sample in `tests/compliance.test.ts` (sharp ≫ 80, a
+3 px blur < 80); re-run that test after touching `measureSharpness`.
 
 ## Adding a format
 

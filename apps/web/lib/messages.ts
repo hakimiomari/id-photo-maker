@@ -6,7 +6,9 @@
 import type {
   DetectedFace,
   FaceLandmarkerConfig,
+  HeadBox,
   ImageAdjustments,
+  ImageMetrics,
   PhotoFormat,
   Rect,
   Size,
@@ -76,6 +78,34 @@ export interface SegmentSuccess {
 }
 
 export type SegmentResponse = SegmentSuccess | WorkerFailure;
+
+/**
+ * Compliance pre-check pixel scan (§4.6). Measurements only — the verdicts are
+ * derived on the main thread so a format change needs no rescan.
+ */
+export interface PrecheckRequest {
+  id: number;
+  type: "precheck";
+  /** A *copy* of the working bitmap — transferred in and consumed. */
+  bitmap: ImageBitmap;
+  /** Face-mesh bounding box in working px. */
+  face: Rect;
+  head: HeadBox;
+  /** Crop rectangle in working px; background is only judged inside it. */
+  rect: Rect;
+  /** Portrait matte at working resolution, when background removal has run. */
+  mask?: Uint8Array;
+  maskSize?: Size;
+}
+
+export interface PrecheckSuccess {
+  id: number;
+  ok: true;
+  metrics: ImageMetrics;
+  ms: number;
+}
+
+export type PrecheckResponse = PrecheckSuccess | WorkerFailure;
 
 /** Matte payload attached to exports when background replacement is active. */
 export interface MattePayload {
