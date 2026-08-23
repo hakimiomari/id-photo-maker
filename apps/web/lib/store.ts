@@ -168,6 +168,25 @@ function segmentWorker() {
   return segmentClient;
 }
 
+/**
+ * Live camera guidance (§4.7): landmarks for one downscaled video frame. Shares
+ * the detect worker (and its loaded model) with the file pipeline. The bitmap
+ * is transferred and consumed. Resolves to [] when detection fails, so a
+ * flaky frame never breaks the preview loop.
+ */
+export async function detectFrame(bitmap: ImageBitmap): Promise<DetectedFace[]> {
+  try {
+    const response = await detectWorker().send(
+      { type: "frame", bitmap, config: faceLandmarkerConfig },
+      [bitmap],
+    );
+    return response.ok && "kind" in response ? response.faces : [];
+  } catch {
+    detectWorker().terminate();
+    return [];
+  }
+}
+
 /** The fill a format's spec asks for; white when unregulated. */
 export function requiredFill(background: PhotoFormat["background"]): string {
   return BACKGROUND_FILLS[background] ?? "#FFFFFF";
@@ -364,6 +383,11 @@ export const usePhotoStore = create<PhotoState>((set, get) => {
 
         if (!response.ok) {
           set({ status: "error", error: response.message });
+          return;
+        }
+        if (!("working" in response)) {
+          // A frame response to a file request cannot happen by id; guard anyway.
+          set({ status: "error", error: "Unexpected response from the detector." });
           return;
         }
         if (response.faces.length === 0) {

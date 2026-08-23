@@ -17,7 +17,7 @@ enforced in CI (`pnpm lint:privacy`), not just promised.
 | 1 | Ingest → detect → crop solver → adjust UI → JPEG/PNG export **with DPI metadata** | ✅ done |
 | 2 | Print sheet + PDF, SEO pages EN/DE, PWA/offline (e2e-verified), sample-photo demo, 14 formats | ✅ done |
 | 3 | Background removal (MODNet/ONNX, WebGPU→WASM), fills, feather, mask-refined crown | ✅ done |
-| 4 | Compliance pre-check ✅ · camera capture ⬜ · batch mode ⬜ · i18n ⬜ · Pro tier ⬜ | 🔄 |
+| 4 | Compliance pre-check ✅ · camera capture ✅ · batch mode ⬜ · i18n ⬜ · Pro tier ⬜ | 🔄 |
 
 Background removal needs the self-hosted models: run
 `pnpm --filter @photomaker/web fetch:models` (downloads MODNet ~25 MB and
@@ -44,8 +44,8 @@ pnpm --filter @photomaker/web fetch:models
 ## Commands
 
 ```bash
-pnpm test           # 171 unit tests in packages/core
-pnpm e2e            # 13 Playwright browser tests, incl. full-pipeline + offline
+pnpm test           # 182 unit tests in packages/core
+pnpm e2e            # 17 Playwright browser tests, incl. full-pipeline, offline, camera
                     #   (PW_CHANNEL=chrome runs them on the system browser)
 pnpm typecheck
 pnpm build
@@ -62,12 +62,13 @@ packages/core/          @photomaker/core — framework-agnostic TypeScript
   src/ingest/           decode, EXIF orientation, downscale, canvas helpers
   src/detect/           MediaPipe wrapper, chin/crown estimation
   src/compliance/       pre-check: pose from landmarks, pixel metrics, evaluator
+  src/capture/          live camera guidance (move closer / back / straighten…)
   src/render/           canvas render pipeline
   src/export/           encode + JPEG JFIF / PNG pHYs density injection
   tests/                Vitest — geometry and byte-level metadata tests
 apps/web/               Next.js 15 App Router UI
   workers/              detect, segment, precheck + encode Web Workers
-  lib/                  zustand store, typed worker protocol, overlay drawing
+  lib/                  zustand store, typed worker protocol, overlay drawing, camera
 scripts/                CI privacy gate
 ```
 
@@ -105,6 +106,21 @@ Two rules keep it honest:
 Thresholds live in `evaluate.ts` and nowhere else. The sharpness score is
 calibrated against the sample in `tests/compliance.test.ts` (sharp ≫ 80, a
 3 px blur < 80); re-run that test after touching `measureSharpness`.
+
+## Camera capture
+
+"Take a photo" opens an in-app camera (`components/CameraCapture.tsx`) when
+`getUserMedia` is available, and falls back to the phone's camera app via
+`<input capture>` otherwise. The preview shows the format's crop frame and head
+oval, and a live loop sends downscaled frames to the detect worker (`type:
+"frame"`) so `assessFrame()` in `packages/core/src/capture/` can say what to
+fix — closer, back, centre, straighten, eyes, mouth — before the 3-second timer
+fires. Front-camera previews are mirrored; captures never are. The still goes
+through `loadFile()` like an upload, so every downstream check applies.
+
+The e2e test feeds Chromium a fake webcam: `e2e/fake-camera.setup.ts` converts
+the sample portrait to a one-frame Y4M (Chromium accepts no other format for
+`--use-file-for-fake-video-capture`), gitignored and rebuilt on every run.
 
 ## Adding a format
 

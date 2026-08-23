@@ -14,11 +14,33 @@ import type {
   Size,
 } from "@photomaker/core";
 
-export interface DetectRequest {
+export interface DetectFileRequest {
   id: number;
   type: "process";
   file: File;
   config: FaceLandmarkerConfig;
+}
+
+/**
+ * Live camera frame (§4.7): landmarks only, no decode/downscale. The bitmap is
+ * a downscaled grab of the video, transferred in and consumed.
+ */
+export interface DetectFrameRequest {
+  id: number;
+  type: "frame";
+  bitmap: ImageBitmap;
+  config: FaceLandmarkerConfig;
+}
+
+export type DetectRequest = DetectFileRequest | DetectFrameRequest;
+
+export interface FrameSuccess {
+  id: number;
+  ok: true;
+  kind: "frame";
+  faces: DetectedFace[];
+  /** Size of the frame the landmarks are normalized against. */
+  size: Size;
 }
 
 export interface DetectSuccess {
@@ -49,7 +71,7 @@ export interface WorkerFailure {
   source?: ImageBitmap;
 }
 
-export type DetectResponse = DetectSuccess | WorkerFailure;
+export type DetectResponse = DetectSuccess | FrameSuccess | WorkerFailure;
 
 export interface SegmentConfig {
   /** URL of the MODNet ONNX model. */
