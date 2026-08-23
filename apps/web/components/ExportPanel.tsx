@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { exportPixelSize } from "@photomaker/core";
+import { useT } from "../lib/i18n";
 import { usePhotoStore } from "../lib/store";
 import { formatBytes } from "../lib/bytes";
 import { ExportResultCard } from "./ResultCard";
@@ -12,6 +13,7 @@ export function ExportPanel() {
   const solution = usePhotoStore((s) => s.solution);
   const exporting = usePhotoStore((s) => s.exporting);
   const exportPhoto = usePhotoStore((s) => s.exportPhoto);
+  const { t } = useT();
 
   // Same pattern as the sheet panel: chips select the file type, one button acts.
   const [mimeType, setMimeType] = useState<"image/jpeg" | "image/png">("image/jpeg");
@@ -27,30 +29,30 @@ export function ExportPanel() {
 
   return (
     <section aria-label="Download" className="space-y-4">
-      <p className="eyebrow">Download</p>
+      <p className="eyebrow">{t.exportP.eyebrow}</p>
 
       <dl className="space-y-1.5 rounded-control bg-canvas px-3.5 py-3 text-[13px]">
         <div className="flex items-baseline justify-between gap-3">
-          <dt className="text-ink-faint">Print file</dt>
+          <dt className="text-ink-faint">{t.exportP.printFile}</dt>
           <dd className="tabular-nums font-medium text-ink">
             {target.width} × {target.height} px · {format.target_dpi} DPI
           </dd>
         </div>
         <div className="flex items-baseline justify-between gap-3">
-          <dt className="text-ink-faint">Prints at exactly</dt>
+          <dt className="text-ink-faint">{t.exportP.printsAt}</dt>
           <dd className="tabular-nums font-medium text-ink">
             {format.width_mm} × {format.height_mm} mm
           </dd>
         </div>
       </dl>
 
-      <div className="flex flex-wrap gap-1.5" role="group" aria-label="File type">
+      <div className="flex flex-wrap gap-1.5" role="group" aria-label={t.exportP.fileType}>
         {(
           [
-            { id: "image/jpeg", label: "JPEG · recommended" },
-            { id: "image/png", label: "PNG" },
+            { id: "image/jpeg", labelKey: "jpegRec" },
+            { id: "image/png", labelKey: "png" },
           ] as const
-        ).map(({ id, label }) => {
+        ).map(({ id, labelKey }) => {
           const selected = mimeType === id;
           return (
             <button
@@ -64,7 +66,7 @@ export function ExportPanel() {
                   : "border-line bg-surface text-ink-muted hover:border-line-strong"
               }`}
             >
-              {label}
+              {t.exportP[labelKey]}
             </button>
           );
         })}
@@ -81,8 +83,8 @@ export function ExportPanel() {
       >
         <IconDownload className="h-4 w-4" />
         {pending === "photo"
-          ? "Preparing…"
-          : `Download photo (${mimeType === "image/png" ? "PNG" : "JPEG"})`}
+          ? t.exportP.preparing
+          : t.exportP.downloadPhoto(mimeType === "image/png" ? "PNG" : "JPEG")}
       </button>
 
       {format.digital_spec && (
@@ -96,8 +98,12 @@ export function ExportPanel() {
           }}
         >
           {pending === "digital"
-            ? "Preparing…"
-            : `Online-application file · ${format.digital_spec.width_px} × ${format.digital_spec.height_px} px, max ${formatBytes(format.digital_spec.max_bytes)}`}
+            ? t.exportP.preparing
+            : t.exportP.onlineFile(
+                format.digital_spec.width_px,
+                format.digital_spec.height_px,
+                formatBytes(format.digital_spec.max_bytes),
+              )}
         </button>
       )}
 
@@ -106,7 +112,7 @@ export function ExportPanel() {
           <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-danger text-surface">
             <IconAlert className="h-3 w-3" strokeWidth={2.5} />
           </span>
-          Fix the checks above before downloading — this crop would be rejected.
+          {t.exportP.blocked}
         </p>
       )}
 

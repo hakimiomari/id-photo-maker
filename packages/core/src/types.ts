@@ -105,6 +105,12 @@ export type ValidationLevel = "ok" | "warn" | "error";
 export interface ValidationItem {
   id: string;
   level: ValidationLevel;
+  /**
+   * Distinguishes different findings that share an id and level (e.g.
+   * exposure "dark" vs "bright") so UIs can localize without parsing the
+   * English message.
+   */
+  variant?: string;
   message: string;
   /** What the user can do about it; shown under the message when not ok. */
   hint?: string;

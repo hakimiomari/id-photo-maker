@@ -1,6 +1,7 @@
 "use client";
 
 import type { CSSProperties } from "react";
+import { useT } from "../lib/i18n";
 import { requiredFill, usePhotoStore } from "../lib/store";
 import { IconCheck } from "./icons";
 
@@ -10,9 +11,9 @@ import { IconCheck } from "./icons";
  */
 
 const PRESETS = [
-  { id: "#FFFFFF", label: "White" },
-  { id: "#F0F0F0", label: "Light grey" },
-  { id: "#FAFAF7", label: "Off-white" },
+  { id: "#FFFFFF", key: "presetWhite" },
+  { id: "#F0F0F0", key: "presetLightGrey" },
+  { id: "#FAFAF7", key: "presetOffWhite" },
 ] as const;
 
 export function BackgroundPanel() {
@@ -26,6 +27,7 @@ export function BackgroundPanel() {
   const setBackgroundFill = usePhotoStore((s) => s.setBackgroundFill);
   const setFeather = usePhotoStore((s) => s.setFeather);
   const toggleOriginal = usePhotoStore((s) => s.toggleOriginal);
+  const { t } = useT();
 
   if (!solution) return null;
 
@@ -43,13 +45,12 @@ export function BackgroundPanel() {
 
   return (
     <section aria-label="Background" className="space-y-4">
-      <p className="eyebrow">Background</p>
+      <p className="eyebrow">{t.bg.eyebrow}</p>
 
       {!mask ? (
         <>
           <p className="text-[13px] leading-relaxed text-ink-muted">
-            Replace the background with the colour this document requires —
-            processed entirely on your device.
+            {t.bg.desc}
           </p>
           <button
             type="button"
@@ -57,12 +58,10 @@ export function BackgroundPanel() {
             disabled={segmenting}
             onClick={() => void removeBackground()}
           >
-            {segmenting ? "Detecting outline…" : "Remove background"}
+            {segmenting ? t.bg.detecting : t.bg.remove}
           </button>
           <p className="text-xs leading-relaxed text-ink-faint">
-            Loads a 25 MB matting model on first use; cached after that. The
-            head measurement also becomes more precise, using the exact hair
-            outline instead of an estimate.
+            {t.bg.modelNote}
           </p>
         </>
       ) : (
@@ -74,7 +73,7 @@ export function BackgroundPanel() {
               onClick={() => setBackgroundFill(autoFill)}
               className={chip(background.fill === autoFill)}
             >
-              Required · {format.background === "any" ? "white" : format.background.replace("_", " ")}
+              {t.bg.requiredChip(t.bgNames[format.background] ?? t.bgNames.white!)}
             </button>
             {PRESETS.filter((p) => p.id !== autoFill).map((preset) => (
               <button
@@ -84,7 +83,7 @@ export function BackgroundPanel() {
                 onClick={() => setBackgroundFill(preset.id)}
                 className={chip(background.fill === preset.id)}
               >
-                {preset.label}
+                {t.bg[preset.key]}
               </button>
             ))}
             <label className={`${chip(customActive)} inline-flex cursor-pointer items-center gap-1.5`}>
@@ -93,7 +92,7 @@ export function BackgroundPanel() {
                 className="h-3.5 w-3.5 rounded-full border border-line-strong"
                 style={{ background: customActive ? background.fill! : "conic-gradient(red, yellow, lime, cyan, blue, magenta, red)" }}
               />
-              Custom
+              {t.bg.custom}
               <input
                 type="color"
                 className="sr-only"
@@ -105,7 +104,7 @@ export function BackgroundPanel() {
 
           <label className="block">
             <span className="mb-1.5 flex items-baseline justify-between text-[13px]">
-              <span className="font-medium text-ink-muted">Edge softness</span>
+              <span className="font-medium text-ink-muted">{t.bg.softness}</span>
               <span className="tabular-nums text-xs font-semibold text-ink">
                 {background.feather} px
               </span>
@@ -129,21 +128,20 @@ export function BackgroundPanel() {
               onClick={toggleOriginal}
               className={`${chip(background.showOriginal)} flex-1`}
             >
-              {background.showOriginal ? "Showing original" : "Show original"}
+              {background.showOriginal ? t.bg.showingOriginal : t.bg.showOriginal}
             </button>
             <button
               type="button"
               className="btn-ghost text-xs"
               onClick={clearBackground}
             >
-              Keep original
+              {t.bg.keepOriginal}
             </button>
           </div>
 
           <p className="inline-flex items-start gap-1.5 text-xs leading-relaxed text-ink-faint">
             <IconCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-ok" />
-            Head height is now measured from the exact hair outline (more
-            accurate for tall hair).
+            {t.bg.crownNote}
           </p>
         </>
       )}

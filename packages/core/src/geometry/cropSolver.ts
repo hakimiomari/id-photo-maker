@@ -294,6 +294,7 @@ function buildValidations(input: ValidationInput): ValidationItem[] {
   items.push({
     id: "centring",
     level: centringLevel,
+    variant: centreOffsetFraction > 0 ? "right" : "left",
     value: offCentreMm,
     message:
       centringLevel === "ok"

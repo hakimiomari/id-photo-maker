@@ -22,8 +22,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   if (!format) return {};
   const label = formatLabel(format, "ps");
   return {
-    title: `د ${label} عکس — وړیا جوړول (${format.width_mm}×${format.height_mm} ملي متره)`,
-    description: `د ${label} عکس (${format.width_mm} × ${format.height_mm} ملي متره) وړیا آنلاین جوړ کړئ. رسمي اندازې ته اتوماتیک برش، د سر سم لوړوالی، د چاپ لپاره چمتو په ${format.target_dpi} DPI. ستاسو عکس هېڅکله له وسیلې نه بهر نه ځي.`,
+    title: `${label} عکس — وړیا جوړول (${format.width_mm}×${format.height_mm} ملي متره)`,
+    description: `${label} عکس (${format.width_mm} × ${format.height_mm} ملي متره) وړیا آنلاین جوړ کړئ. رسمي اندازې ته اتوماتیک برش، د سر سم لوړوالی، د چاپ لپاره چمتو په ${format.target_dpi} DPI. ستاسو عکس هېڅکله له وسیلې نه بهر نه ځي.`,
     alternates: {
       canonical: `/ps/${slug}`,
       languages: {

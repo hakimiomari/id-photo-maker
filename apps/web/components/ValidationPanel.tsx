@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { ValidationItem, ValidationLevel } from "@photomaker/core";
+import { localizeCheck, useT, type Dict } from "../lib/i18n";
 import { usePhotoStore } from "../lib/store";
 import { IconAlert, IconCheck, IconReset, IconX } from "./icons";
 
@@ -17,23 +18,11 @@ const DOT: Record<ValidationLevel, string> = {
   error: "bg-danger",
 };
 
-const HEADLINE: Record<ValidationLevel, string> = {
-  ok: "Ready to download",
-  warn: "Usable, with warnings",
-  error: "Not within spec",
-};
-
 /**
  * What no heuristic can see (§4.6): the user ticks these off themselves.
  * Deliberately short — a long list gets skipped wholesale.
  */
-const MANUAL_CHECKS = [
-  { id: "recent", label: "Taken within the last 6 months" },
-  { id: "glasses", label: "No glare on glasses; eyes fully visible (some countries: no glasses at all)" },
-  { id: "headwear", label: "No hat or head covering, unless worn daily for religious reasons" },
-  { id: "hair", label: "Hair not covering the eyes or eyebrows" },
-  { id: "clothing", label: "Everyday clothing — no uniform, and a colour that contrasts with the background" },
-] as const;
+const MANUAL_CHECK_IDS = ["recent", "glasses", "headwear", "hair", "clothing"] as const;
 
 function worst(...levels: Array<ValidationLevel | undefined>): ValidationLevel {
   if (levels.includes("error")) return "error";
@@ -52,24 +41,28 @@ function LevelGlyph({ level }: { level: ValidationLevel }) {
   );
 }
 
-function CheckList({ items }: { items: ValidationItem[] }) {
+function CheckList({ items, t }: { items: ValidationItem[]; t: Dict }) {
+  const format = usePhotoStore((s) => s.format());
   return (
     <ul className="space-y-2.5">
-      {items.map((item) => (
-        <li key={item.id} className="flex items-start gap-2.5">
-          <span className="mt-px">
-            <LevelGlyph level={item.level} />
-          </span>
-          <span className="min-w-0 text-[13px] leading-snug text-ink-muted">
-            {item.message}
-            {item.level !== "ok" && item.hint && (
-              <span className="mt-0.5 block text-xs leading-snug text-ink-faint">
-                {item.hint}
-              </span>
-            )}
-          </span>
-        </li>
-      ))}
+      {items.map((item) => {
+        const localized = localizeCheck(item, t, format);
+        return (
+          <li key={item.id} className="flex items-start gap-2.5">
+            <span className="mt-px">
+              <LevelGlyph level={item.level} />
+            </span>
+            <span className="min-w-0 text-[13px] leading-snug text-ink-muted">
+              {localized.message}
+              {item.level !== "ok" && localized.hint && (
+                <span className="mt-0.5 block text-xs leading-snug text-ink-faint">
+                  {localized.hint}
+                </span>
+              )}
+            </span>
+          </li>
+        );
+      })}
     </ul>
   );
 }
@@ -86,7 +79,7 @@ function Pending({ label }: { label: string }) {
   );
 }
 
-function ManualChecklist() {
+function ManualChecklist({ t }: { t: Dict }) {
   const [ticked, setTicked] = useState<Set<string>>(() => new Set());
   const toggle = (id: string) =>
     setTicked((previous) => {
@@ -95,31 +88,31 @@ function ManualChecklist() {
       else next.add(id);
       return next;
     });
-  const remaining = MANUAL_CHECKS.length - ticked.size;
+  const remaining = MANUAL_CHECK_IDS.length - ticked.size;
 
   return (
     <details className="group rounded-control border border-line bg-canvas px-3.5 py-2.5">
       <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-[13px] font-medium text-ink marker:content-none">
-        <span>Before you submit</span>
+        <span>{t.checks.beforeSubmit}</span>
         <span className="text-xs font-normal tabular-nums text-ink-faint">
-          {remaining === 0 ? "all confirmed" : `${remaining} to confirm`}
+          {remaining === 0 ? t.checks.allConfirmed : t.checks.toConfirm(remaining)}
         </span>
       </summary>
       <p className="mt-2 text-xs leading-relaxed text-ink-faint">
-        These can&apos;t be checked automatically — confirm them yourself.
+        {t.checks.manualIntro}
       </p>
       <ul className="mt-2.5 space-y-2">
-        {MANUAL_CHECKS.map((check) => (
-          <li key={check.id}>
+        {MANUAL_CHECK_IDS.map((id) => (
+          <li key={id}>
             <label className="flex cursor-pointer items-start gap-2.5 text-[13px] leading-snug text-ink-muted">
               <input
                 type="checkbox"
                 className="mt-0.5 h-4 w-4 shrink-0 accent-accent"
-                checked={ticked.has(check.id)}
-                onChange={() => toggle(check.id)}
+                checked={ticked.has(id)}
+                onChange={() => toggle(id)}
               />
-              <span className={ticked.has(check.id) ? "text-ink-faint line-through" : ""}>
-                {check.label}
+              <span className={ticked.has(id) ? "text-ink-faint line-through" : ""}>
+                {t.checks.manual[id]}
               </span>
             </label>
           </li>
@@ -138,14 +131,15 @@ export function ValidationPanel() {
   const metricsPending = usePhotoStore((s) => s.metricsPending);
   const format = usePhotoStore((s) => s.format());
   const resetAdjust = usePhotoStore((s) => s.resetAdjust);
+  const { t } = useT();
 
   if (!solution) return null;
 
   const level = worst(solution.level, compliance?.level);
 
   return (
-    <section aria-label="Photo checks" className="space-y-4">
-      <p className="eyebrow">Checks</p>
+    <section aria-label={t.checks.eyebrow} className="space-y-4">
+      <p className="eyebrow">{t.checks.eyebrow}</p>
 
       <div
         role="status"
@@ -153,36 +147,34 @@ export function ValidationPanel() {
         className={`flex items-center gap-2.5 rounded-control border px-3.5 py-2.5 text-sm font-semibold ${BANNER[level]}`}
       >
         <LevelGlyph level={level} />
-        {HEADLINE[level]}
+        {t.checks.headline[level]}
       </div>
 
       <div className="space-y-2.5">
-        <h3 className="text-xs font-semibold text-ink">Framing</h3>
-        <CheckList items={solution.validations} />
+        <h3 className="text-xs font-semibold text-ink">{t.checks.framing}</h3>
+        <CheckList items={solution.validations} t={t} />
       </div>
 
       {compliance && (
         <div className="space-y-2.5">
-          <h3 className="text-xs font-semibold text-ink">Photo quality</h3>
-          <CheckList items={compliance.checks} />
-          {metricsPending && (
-            <Pending label="Checking exposure, sharpness and background…" />
-          )}
+          <h3 className="text-xs font-semibold text-ink">{t.checks.quality}</h3>
+          <CheckList items={compliance.checks} t={t} />
+          {metricsPending && <Pending label={t.checks.scanning} />}
         </div>
       )}
 
-      <ManualChecklist />
+      <ManualChecklist t={t} />
 
       <button type="button" className="btn-secondary w-full" onClick={resetAdjust}>
         <IconReset className="h-4 w-4" />
-        Reset to auto crop
+        {t.checks.reset}
       </button>
 
       <p className="border-t border-line pt-3 text-xs leading-relaxed text-ink-faint">
-        Spec last checked {format.verified_date}
-        {format.verification_status === "seeded" && " (not yet re-verified)"}.
-        Photo-quality checks are automatic estimates — always confirm the
-        requirements with the issuing authority.
+        {t.checks.specNote(
+          format.verified_date,
+          format.verification_status === "seeded",
+        )}
       </p>
     </section>
   );

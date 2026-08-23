@@ -164,11 +164,37 @@ test("Dari and Pashto SEO pages render right-to-left", async ({ page }) => {
   await expect(mainPs).toHaveAttribute("dir", "rtl");
   await expect(page.getByRole("heading", { level: 1 })).toContainText("جواز");
 
-  // Deep-link still lands in the (English) editor with the format preselected.
+  // Deep-link lands in the editor with format AND language preselected.
   await page.getByRole("link", { name: "په ایډیټر کې یې پرانیزئ" }).click();
+  await page.waitForURL(/format=de-fuehrerschein/);
   await expect(
-    page.getByRole("heading", { name: /German driving licence/ }),
+    page.getByRole("heading", { name: /د آلمان د موټر چلونې جواز · 35 × 45 mm/ }),
   ).toBeVisible();
+});
+
+test("editor language switch: Dari applies, mirrors, persists", async ({ page }) => {
+  await page.goto("/");
+  const html = page.locator("html");
+  await expect(html).toHaveAttribute("dir", "ltr");
+
+  await page.getByLabel("Language").selectOption("fa");
+  await expect(html).toHaveAttribute("dir", "rtl");
+  await expect(html).toHaveAttribute("lang", "fa-AF");
+  await expect(page.getByRole("button", { name: "انتخاب عکس" })).toBeVisible();
+
+  // Persists across reload.
+  await page.reload();
+  await expect(html).toHaveAttribute("dir", "rtl");
+
+  // The landing-page CTA deep-links the language too.
+  await page.goto("/ps/us-passport-photo");
+  await page.getByRole("link", { name: "په ایډیټر کې یې پرانیزئ" }).click();
+  await expect(html).toHaveAttribute("lang", "ps");
+  await expect(page.getByRole("button", { name: "عکس وټاکئ" })).toBeVisible();
+
+  // Back to English for the remaining tests' sake.
+  await page.getByLabel("ژبه").selectOption("en");
+  await expect(html).toHaveAttribute("dir", "ltr");
 });
 
 test("unknown format slugs 404", async ({ page }) => {
