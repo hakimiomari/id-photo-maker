@@ -6,8 +6,10 @@
  */
 
 import {
+  assignCells,
   buildSheetPdf,
   canvasToBlob,
+  countsPerMember,
   composeWithMatte,
   encodeCanvas,
   encodeWithinBytes,
@@ -15,6 +17,7 @@ import {
   layoutSheet,
   releaseCanvas,
   renderForFormat,
+  renderMixedSheet,
   renderPhoto,
   renderSheet,
   type AnyCanvas,
@@ -22,6 +25,8 @@ import {
 } from "@photomaker/core";
 import type { MattePayload } from "../lib/messages";
 import type {
+  BatchSheetRequest,
+  BatchSheetResponse,
   EncodeRequest,
   EncodeResponse,
   SheetRequest,
@@ -30,7 +35,7 @@ import type {
 
 const ctx = self as unknown as DedicatedWorkerGlobalScope;
 
-type Request = EncodeRequest | SheetRequest;
+type Request = EncodeRequest | SheetRequest | BatchSheetRequest;
 
 /**
  * Background replacement (§5.3): compose the full-resolution source through
@@ -56,7 +61,67 @@ ctx.addEventListener("message", async (event: MessageEvent<Request>) => {
   const request = event.data;
   if (request?.type === "encode") return handleEncode(request);
   if (request?.type === "sheet") return handleSheet(request);
+  if (request?.type === "batch-sheet") return handleBatchSheet(request);
 });
+
+async function handleBatchSheet(request: BatchSheetRequest): Promise<void> {
+  const bitmaps: ImageBitmap[] = [];
+  try {
+    const layout = layoutSheet(request.format, getPaper(request.paperId));
+    const assignment = assignCells(layout.copies, request.photos.length);
+    const jpegs = request.photos.map((buffer) => new Uint8Array(buffer));
+
+    let blob: Blob;
+    if (request.output === "pdf") {
+      const bytes = await buildSheetPdf({
+        layout,
+        photos: jpegs,
+        assignment,
+        title: `${request.format.id} family sheet`,
+      });
+      blob = new Blob([bytes as BlobPart], { type: "application/pdf" });
+    } else {
+      for (const jpeg of jpegs) {
+        bitmaps.push(
+          await createImageBitmap(new Blob([jpeg], { type: "image/jpeg" })),
+        );
+      }
+      const sheet = renderMixedSheet(bitmaps, layout, request.dpi, assignment);
+      const encoded = await encodeCanvas(sheet.canvas, {
+        mimeType: "image/jpeg",
+        quality: 0.92,
+        dpi: request.dpi,
+      });
+      blob = encoded.blob;
+    }
+
+    const response: BatchSheetResponse = {
+      id: request.id,
+      ok: true,
+      kind: "batch",
+      blob,
+      bytes: blob.size,
+      copies: layout.copies,
+      perMember: countsPerMember(assignment, request.photos.length),
+      sheetWidth_mm: layout.sheetWidth_mm,
+      sheetHeight_mm: layout.sheetHeight_mm,
+    };
+    ctx.postMessage(response);
+  } catch (error) {
+    const failure: BatchSheetResponse = {
+      id: request.id,
+      ok: false,
+      code: "batch-sheet-failed",
+      message:
+        error instanceof Error
+          ? error.message
+          : "The family sheet could not be created.",
+    };
+    ctx.postMessage(failure);
+  } finally {
+    for (const bitmap of bitmaps) bitmap.close();
+  }
+}
 
 async function handleEncode(request: EncodeRequest): Promise<void> {
   let composed: AnyCanvas | null = null;
@@ -137,7 +202,7 @@ async function handleSheet(request: SheetRequest): Promise<void> {
       releaseCanvas(photo.canvas);
       const bytes = await buildSheetPdf({
         layout,
-        photoJpeg: new Uint8Array(await jpeg.arrayBuffer()),
+        photos: [new Uint8Array(await jpeg.arrayBuffer())],
         title: `${request.format.id} print sheet`,
       });
       blob = new Blob([bytes as BlobPart], { type: "application/pdf" });
@@ -170,7 +235,7 @@ async function handleSheet(request: SheetRequest): Promise<void> {
 }
 
 function fail(
-  request: Request,
+  request: EncodeRequest | SheetRequest,
   error: unknown,
   code: string,
   fallback: string,

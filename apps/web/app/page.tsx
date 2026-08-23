@@ -6,6 +6,7 @@ import { AdjustPanel } from "../components/AdjustPanel";
 import { BackgroundPanel } from "../components/BackgroundPanel";
 import { Editor } from "../components/Editor";
 import { ExportPanel } from "../components/ExportPanel";
+import { FamilyPanel } from "../components/FamilyPanel";
 import { FormatPicker } from "../components/FormatPicker";
 import { SheetPanel } from "../components/SheetPanel";
 import { Uploader } from "../components/Uploader";
@@ -20,6 +21,19 @@ const STEPS = [
   { id: "adjust", label: "Adjust" },
   { id: "download", label: "Download" },
 ] as const;
+
+function FamilyPanelCard() {
+  // Outside the ready-only group: the collected family members must stay
+  // visible while the next person's photo is being chosen.
+  const hasBatch = usePhotoStore((s) => s.batch.length > 0);
+  const ready = usePhotoStore((s) => s.status === "ready");
+  if (!hasBatch && !ready) return null;
+  return (
+    <section className="card p-5">
+      <FamilyPanel />
+    </section>
+  );
+}
 
 export default function Home() {
   const status = usePhotoStore((s) => s.status);
@@ -151,6 +165,7 @@ export default function Home() {
               </section>
             </>
           )}
+          <FamilyPanelCard />
         </aside>
       </div>
 

@@ -14,7 +14,7 @@ export function ExportResultCard({ kinds }: { kinds: ExportResult["kind"][] }) {
   const clearExport = usePhotoStore((s) => s.clearExport);
 
   if (!exportResult || !kinds.includes(exportResult.kind)) return null;
-  const sheet = exportResult.kind === "sheet";
+  const sheet = exportResult.kind === "sheet" || exportResult.kind === "family";
 
   return (
     <div className="space-y-3 rounded-control border border-ok-border bg-ok-soft p-4">
@@ -22,11 +22,19 @@ export function ExportResultCard({ kinds }: { kinds: ExportResult["kind"][] }) {
         <span className="flex h-[18px] w-[18px] items-center justify-center rounded-full bg-ok text-surface">
           <IconCheck className="h-3 w-3" strokeWidth={2.75} />
         </span>
-        {sheet ? "Your print sheet is ready." : "Your photo is ready."}
+        {exportResult.kind === "family"
+          ? "Your family sheet is ready."
+          : sheet
+            ? "Your print sheet is ready."
+            : "Your photo is ready."}
       </p>
       <p className="tabular-nums text-xs text-ink-muted">
         {sheet
-          ? `${exportResult.copies} photos · ${exportResult.width} × ${exportResult.height} mm · ${formatBytes(exportResult.bytes)}`
+          ? `${exportResult.copies} photos${
+              exportResult.perMember
+                ? ` (${exportResult.perMember.join(" + ")} per person)`
+                : ""
+            } · ${exportResult.width} × ${exportResult.height} mm · ${formatBytes(exportResult.bytes)}`
           : `${exportResult.width} × ${exportResult.height} px · ${exportResult.dpi} DPI · ${formatBytes(exportResult.bytes)}`}
       </p>
       <div className="flex flex-col gap-2">
