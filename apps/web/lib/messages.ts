@@ -172,6 +172,35 @@ export interface SheetRequest {
   matte?: MattePayload;
 }
 
+/**
+ * Family/batch sheet (§9): one sheet shared by several people. Photos arrive
+ * as finished JPEGs (matte + adjustments already applied), one per member.
+ */
+export interface BatchSheetRequest {
+  id: number;
+  type: "batch-sheet";
+  /** JPEG bytes per member, transferred. */
+  photos: ArrayBuffer[];
+  format: PhotoFormat;
+  paperId: string;
+  dpi: number;
+  output: "jpeg" | "pdf";
+}
+
+export interface BatchSheetSuccess {
+  id: number;
+  ok: true;
+  kind: "batch";
+  blob: Blob;
+  bytes: number;
+  copies: number;
+  perMember: number[];
+  sheetWidth_mm: number;
+  sheetHeight_mm: number;
+}
+
+export type BatchSheetResponse = BatchSheetSuccess | WorkerFailure;
+
 export interface SheetSuccess {
   id: number;
   ok: true;

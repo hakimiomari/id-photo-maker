@@ -29,6 +29,8 @@ import {
 } from "@photomaker/core";
 import { faceLandmarkerConfig, segmentConfig } from "./config";
 import type {
+  BatchSheetRequest,
+  BatchSheetResponse,
   DetectRequest,
   DetectResponse,
   EncodeRequest,
@@ -53,9 +55,22 @@ export interface ExportResult {
   width: number;
   height: number;
   dpi: number;
-  kind: "print" | "digital" | "sheet";
+  kind: "print" | "digital" | "sheet" | "family";
   /** Sheet exports only: photos per sheet. */
   copies?: number;
+  /** Family sheets only: photos per member, in member order. */
+  perMember?: number[];
+}
+
+/** One person in the family batch (§9): their finished photo, ready to tile. */
+export interface BatchMember {
+  id: number;
+  label: string;
+  /** The final rendered JPEG — matte, fills and adjustments already baked in. */
+  jpeg: ArrayBuffer;
+  /** Small data-URL preview for the member list. */
+  thumbUrl: string;
+  formatId: string;
 }
 
 interface PhotoState {
@@ -97,6 +112,10 @@ interface PhotoState {
   metrics: ImageMetrics | null;
   metricsPending: boolean;
 
+  /** Family batch (§9). Survives loadFile/reset — that is its whole purpose. */
+  batch: BatchMember[];
+  batchBusy: boolean;
+
   /**
    * Derived state, recomputed once per change rather than per read.
    *
@@ -126,6 +145,10 @@ interface PhotoState {
     digital?: boolean;
   }) => Promise<void>;
   exportSheet: (output: "jpeg" | "pdf") => Promise<void>;
+  addToBatch: () => Promise<void>;
+  removeBatchMember: (id: number) => void;
+  clearBatch: () => void;
+  exportFamilySheet: (output: "jpeg" | "pdf") => Promise<void>;
   removeBackground: () => Promise<void>;
   clearBackground: () => void;
   /** Re-run the pixel scan for the selected face (automatic on load/face/mask changes). */
@@ -142,8 +165,8 @@ const MAX_SCALE = 3;
 
 let detectClient: WorkerClient<DetectRequest, DetectResponse> | null = null;
 let encodeClient: WorkerClient<
-  EncodeRequest | SheetRequest,
-  EncodeResponse | SheetResponse
+  EncodeRequest | SheetRequest | BatchSheetRequest,
+  EncodeResponse | SheetResponse | BatchSheetResponse
 > | null = null;
 
 function detectWorker() {
@@ -194,8 +217,8 @@ export function requiredFill(background: PhotoFormat["background"]): string {
 
 function encodeWorker() {
   encodeClient ??= new WorkerClient<
-    EncodeRequest | SheetRequest,
-    EncodeResponse | SheetResponse
+    EncodeRequest | SheetRequest | BatchSheetRequest,
+    EncodeResponse | SheetResponse | BatchSheetResponse
   >(
     () =>
       new Worker(new URL("../workers/encode.worker.ts", import.meta.url), {
@@ -219,6 +242,21 @@ function precheckWorker() {
 
 /** Only the latest pixel scan may land; face switches mid-flight are dropped. */
 let precheckSeq = 0;
+
+let batchMemberSeq = 1;
+
+/** Small data-URL preview of a finished member photo. */
+async function makeThumb(jpeg: ArrayBuffer): Promise<string> {
+  const bitmap = await createImageBitmap(new Blob([jpeg], { type: "image/jpeg" }));
+  const height = 96;
+  const width = Math.round((bitmap.width / bitmap.height) * height);
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  canvas.getContext("2d")?.drawImage(bitmap, 0, 0, width, height);
+  bitmap.close();
+  return canvas.toDataURL("image/jpeg", 0.75);
+}
 
 /** The colour the export will paint behind the subject, or null to keep it. */
 function activeFill(state: PhotoState): string | null {
@@ -319,6 +357,8 @@ export const usePhotoStore = create<PhotoState>((set, get) => {
     background: { fill: null, feather: 1, showOriginal: false },
     metrics: null,
     metricsPending: false,
+    batch: [],
+    batchBusy: false,
 
     format: () => getFormat(get().formatId),
 
@@ -643,7 +683,8 @@ export const usePhotoStore = create<PhotoState>((set, get) => {
           });
           return;
         }
-        if (!("copies" in response)) return; // sheet requests get sheet responses
+        // Sheet responses carry the bitmap back; batch responses never do.
+        if (!("copies" in response) || !("source" in response)) return;
 
         const previous = get().exportResult;
         if (previous) URL.revokeObjectURL(previous.url);
@@ -671,6 +712,139 @@ export const usePhotoStore = create<PhotoState>((set, get) => {
             error instanceof Error
               ? `${error.message} Please re-select your photo and try again.`
               : "The sheet export failed. Please try again.",
+        });
+      }
+    },
+
+    addToBatch: async () => {
+      const state = get();
+      const solution = state.solution;
+      const source = state.source;
+      if (!solution || !source || state.exporting || state.batchBusy) return;
+
+      const format = state.format();
+      // One sheet, one cell size: every member must share the format.
+      const first = state.batch[0];
+      if (first && first.formatId !== format.id) {
+        set({
+          error: `This family sheet uses ${getFormat(first.formatId).label.en}. Switch back to that format, or clear the batch to start over.`,
+        });
+        return;
+      }
+
+      set({ batchBusy: true, exporting: true, error: null });
+      const matte = buildMatte(state);
+      try {
+        const response = await encodeWorker().send(
+          {
+            type: "encode",
+            source,
+            crop: toSourceRect(solution.rect, state.sourceScale),
+            format,
+            dpi: format.target_dpi,
+            mimeType: "image/jpeg",
+            adjustments: state.image,
+            ...(matte ? { matte } : {}),
+          },
+          [source],
+        );
+
+        if (!response.ok) {
+          set({
+            batchBusy: false,
+            exporting: false,
+            error: response.message,
+            source: response.source ?? null,
+          });
+          return;
+        }
+        if (!("width" in response)) return;
+
+        const jpeg = await response.blob.arrayBuffer();
+        const member: BatchMember = {
+          id: batchMemberSeq++,
+          label: `Person ${get().batch.length + 1}`,
+          jpeg,
+          thumbUrl: await makeThumb(jpeg),
+          formatId: format.id,
+        };
+        set((current) => ({
+          batchBusy: false,
+          exporting: false,
+          source: response.source,
+          batch: [...current.batch, member],
+        }));
+      } catch (error) {
+        encodeWorker().terminate();
+        set({
+          batchBusy: false,
+          exporting: false,
+          source: null,
+          error:
+            error instanceof Error
+              ? `${error.message} Please re-select your photo and try again.`
+              : "Adding to the family sheet failed. Please try again.",
+        });
+      }
+    },
+
+    removeBatchMember: (id) =>
+      set((state) => ({
+        batch: state.batch
+          .filter((member) => member.id !== id)
+          .map((member, index) => ({ ...member, label: `Person ${index + 1}` })),
+      })),
+
+    clearBatch: () => set({ batch: [] }),
+
+    exportFamilySheet: async (output) => {
+      const state = get();
+      if (state.batch.length === 0 || state.batchBusy || state.exporting) return;
+
+      const format = getFormat(state.batch[0]!.formatId);
+      set({ batchBusy: true, error: null });
+      try {
+        // Send copies; members stay reusable for the next paper size.
+        const response = await encodeWorker().send({
+          type: "batch-sheet",
+          photos: state.batch.map((member) => member.jpeg.slice(0)),
+          format,
+          paperId: state.paperId,
+          dpi: format.target_dpi,
+          output,
+        });
+
+        if (!response.ok) {
+          set({ batchBusy: false, error: response.message });
+          return;
+        }
+        if (!("kind" in response) || response.kind !== "batch") return;
+
+        const previous = get().exportResult;
+        if (previous) URL.revokeObjectURL(previous.url);
+        const extension = output === "pdf" ? "pdf" : "jpg";
+        set({
+          batchBusy: false,
+          exportResult: {
+            url: URL.createObjectURL(response.blob),
+            filename: `family-sheet-${format.id}-${state.paperId}-${state.batch.length}people.${extension}`,
+            bytes: response.bytes,
+            width: response.sheetWidth_mm,
+            height: response.sheetHeight_mm,
+            dpi: format.target_dpi,
+            kind: "family",
+            copies: response.copies,
+            perMember: response.perMember,
+          },
+        });
+      } catch (error) {
+        encodeWorker().terminate();
+        set({
+          batchBusy: false,
+          error:
+            error instanceof Error
+              ? error.message
+              : "The family sheet export failed. Please try again.",
         });
       }
     },
