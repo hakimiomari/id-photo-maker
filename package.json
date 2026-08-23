@@ -13,7 +13,7 @@
     "test": "turbo run test",
     "test:core": "pnpm --filter @photomaker/core test",
     "e2e": "pnpm --filter @photomaker/web e2e",
-    "lint:privacy": "node scripts/check-no-network.mjs"
+    "lint:privacy": "node scripts/check-no-network.mjs && node scripts/check-analytics.mjs"
   },
   "devDependencies": {
     "turbo": "^2.3.3",
