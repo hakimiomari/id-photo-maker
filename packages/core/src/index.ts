@@ -34,3 +34,7 @@ export * from "./compliance/evaluate";
 
 export * from "./capture/guidance";
 export * from "./sheet/mixed";
+export * from "./retouch/ops";
+export * from "./retouch/heal";
+export * from "./retouch/smooth";
+export * from "./retouch/apply";

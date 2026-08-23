@@ -6,7 +6,9 @@
  */
 
 import {
+  applyRetouchOps,
   assignCells,
+  drawAttire,
   buildSheetPdf,
   canvasToBlob,
   countsPerMember,
@@ -23,7 +25,7 @@ import {
   type AnyCanvas,
   type RenderSource,
 } from "@photomaker/core";
-import type { MattePayload } from "../lib/messages";
+import type { MattePayload, RetouchPayload } from "../lib/messages";
 import type {
   BatchSheetRequest,
   BatchSheetResponse,
@@ -55,6 +57,65 @@ function matteSource(
     feather: Math.max(1, Math.round(matte.feather * scale)),
   });
   return { src: composed, composed };
+}
+
+/**
+ * Manual retouch (heal/smooth, then the attire overlay) replayed at source
+ * resolution. Runs before the matte so healed skin also feeds the cut-out;
+ * attire is drawn after the matte in prepareSource so it sits on top of the
+ * replaced background.
+ */
+async function retouchedSource(
+  source: ImageBitmap,
+  retouch: RetouchPayload | undefined,
+): Promise<{ src: RenderSource; composed: AnyCanvas | null }> {
+  if (!retouch || retouch.ops.length === 0) return { src: source, composed: null };
+  const composed = applyRetouchOps(source, retouch.ops, retouch.scale);
+  return { src: composed, composed };
+}
+
+/** Full source pipeline: retouch ops → matte → attire overlay. */
+async function prepareSource(
+  source: ImageBitmap,
+  matte: MattePayload | undefined,
+  retouch: RetouchPayload | undefined,
+): Promise<{ src: RenderSource; owned: AnyCanvas[] }> {
+  const owned: AnyCanvas[] = [];
+
+  const afterOps = await retouchedSource(source, retouch);
+  if (afterOps.composed) owned.push(afterOps.composed);
+  let current: RenderSource = afterOps.src;
+
+  if (matte) {
+    const scale = source.width / matte.width;
+    const composed = composeWithMatte(current, {
+      mask: matte.data,
+      maskSize: { width: matte.width, height: matte.height },
+      fill: matte.fill,
+      feather: Math.max(1, Math.round(matte.feather * scale)),
+    });
+    owned.push(composed);
+    current = composed;
+  }
+
+  if (retouch?.attire) {
+    // Attire must be drawn onto a canvas; wrap bitmaps as needed.
+    let canvas: AnyCanvas;
+    if (current instanceof ImageBitmap) {
+      canvas = applyRetouchOps(current, [], 1); // plain copy
+      owned.push(canvas);
+    } else {
+      canvas = current;
+    }
+    const attireBitmap = await createImageBitmap(
+      new Blob([retouch.attire.bytes]),
+    );
+    drawAttire(canvas, attireBitmap, retouch.attire.transform, retouch.scale);
+    attireBitmap.close();
+    current = canvas;
+  }
+
+  return { src: current, owned };
 }
 
 ctx.addEventListener("message", async (event: MessageEvent<Request>) => {
@@ -124,11 +185,11 @@ async function handleBatchSheet(request: BatchSheetRequest): Promise<void> {
 }
 
 async function handleEncode(request: EncodeRequest): Promise<void> {
-  let composed: AnyCanvas | null = null;
+  let owned: AnyCanvas[] = [];
   try {
     const digital = request.digital;
-    const prepared = matteSource(request.source, request.matte);
-    composed = prepared.composed;
+    const prepared = await prepareSource(request.source, request.matte, request.retouch);
+    owned = prepared.owned;
     const rendered = digital
       ? {
           canvas: renderPhoto({
@@ -149,8 +210,8 @@ async function handleEncode(request: EncodeRequest): Promise<void> {
           adjustments: request.adjustments,
           backgroundFill: request.backgroundFill,
         });
-    if (composed) releaseCanvas(composed);
-    composed = null;
+    for (const canvas of owned) releaseCanvas(canvas);
+    owned = [];
 
     const encoded = digital
       ? await encodeWithinBytes(rendered.canvas, digital.maxBytes, {
@@ -175,26 +236,26 @@ async function handleEncode(request: EncodeRequest): Promise<void> {
     };
     ctx.postMessage(response, [request.source]);
   } catch (error) {
-    if (composed) releaseCanvas(composed);
+    for (const canvas of owned) releaseCanvas(canvas);
     fail(request, error, "encode-failed", "The photo could not be exported.");
   }
 }
 
 async function handleSheet(request: SheetRequest): Promise<void> {
-  let composed: AnyCanvas | null = null;
+  let owned: AnyCanvas[] = [];
   try {
     const layout = layoutSheet(request.format, getPaper(request.paperId));
 
-    const prepared = matteSource(request.source, request.matte);
-    composed = prepared.composed;
+    const prepared = await prepareSource(request.source, request.matte, request.retouch);
+    owned = prepared.owned;
     // Render the single photo once at print resolution; both outputs reuse it.
     const photo = renderForFormat(prepared.src, request.crop, request.format, {
       dpi: request.dpi,
       adjustments: request.adjustments,
       backgroundFill: request.backgroundFill,
     });
-    if (composed) releaseCanvas(composed);
-    composed = null;
+    for (const canvas of owned) releaseCanvas(canvas);
+    owned = [];
 
     let blob: Blob;
     if (request.output === "pdf") {
@@ -229,7 +290,7 @@ async function handleSheet(request: SheetRequest): Promise<void> {
     };
     ctx.postMessage(response, [request.source]);
   } catch (error) {
-    if (composed) releaseCanvas(composed);
+    for (const canvas of owned) releaseCanvas(canvas);
     fail(request, error, "sheet-failed", "The print sheet could not be created.");
   }
 }

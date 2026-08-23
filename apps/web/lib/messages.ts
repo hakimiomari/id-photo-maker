@@ -4,7 +4,9 @@
  */
 
 import type {
+  AttireTransform,
   DetectedFace,
+  RetouchOp,
   FaceLandmarkerConfig,
   HeadBox,
   ImageAdjustments,
@@ -129,6 +131,16 @@ export interface PrecheckSuccess {
 
 export type PrecheckResponse = PrecheckSuccess | WorkerFailure;
 
+/** Manual retouch edits, replayed at source resolution before rendering. */
+export interface RetouchPayload {
+  /** Heal/smooth ops in working px; the worker scales them. */
+  ops: RetouchOp[];
+  /** source px per working px. */
+  scale: number;
+  /** Uploaded attire overlay (original file bytes) and its placement. */
+  attire?: { bytes: ArrayBuffer; transform: AttireTransform };
+}
+
 /** Matte payload attached to exports when background replacement is active. */
 export interface MattePayload {
   /** Working-resolution alpha; upsampled bilinearly at render time (§5.3). */
@@ -155,6 +167,7 @@ export interface EncodeRequest {
   /** Digital-spec exports: exact pixel size and byte ceiling. */
   digital?: { width: number; height: number; maxBytes: number };
   matte?: MattePayload;
+  retouch?: RetouchPayload;
 }
 
 export interface SheetRequest {
@@ -170,6 +183,7 @@ export interface SheetRequest {
   adjustments?: ImageAdjustments;
   backgroundFill?: string;
   matte?: MattePayload;
+  retouch?: RetouchPayload;
 }
 
 /**
