@@ -6,17 +6,41 @@
 import type {
   DetectedFace,
   FaceLandmarkerConfig,
+  HeadBox,
   ImageAdjustments,
+  ImageMetrics,
   PhotoFormat,
   Rect,
   Size,
 } from "@photomaker/core";
 
-export interface DetectRequest {
+export interface DetectFileRequest {
   id: number;
   type: "process";
   file: File;
   config: FaceLandmarkerConfig;
+}
+
+/**
+ * Live camera frame (§4.7): landmarks only, no decode/downscale. The bitmap is
+ * a downscaled grab of the video, transferred in and consumed.
+ */
+export interface DetectFrameRequest {
+  id: number;
+  type: "frame";
+  bitmap: ImageBitmap;
+  config: FaceLandmarkerConfig;
+}
+
+export type DetectRequest = DetectFileRequest | DetectFrameRequest;
+
+export interface FrameSuccess {
+  id: number;
+  ok: true;
+  kind: "frame";
+  faces: DetectedFace[];
+  /** Size of the frame the landmarks are normalized against. */
+  size: Size;
 }
 
 export interface DetectSuccess {
@@ -47,7 +71,7 @@ export interface WorkerFailure {
   source?: ImageBitmap;
 }
 
-export type DetectResponse = DetectSuccess | WorkerFailure;
+export type DetectResponse = DetectSuccess | FrameSuccess | WorkerFailure;
 
 export interface SegmentConfig {
   /** URL of the MODNet ONNX model. */
@@ -76,6 +100,34 @@ export interface SegmentSuccess {
 }
 
 export type SegmentResponse = SegmentSuccess | WorkerFailure;
+
+/**
+ * Compliance pre-check pixel scan (§4.6). Measurements only — the verdicts are
+ * derived on the main thread so a format change needs no rescan.
+ */
+export interface PrecheckRequest {
+  id: number;
+  type: "precheck";
+  /** A *copy* of the working bitmap — transferred in and consumed. */
+  bitmap: ImageBitmap;
+  /** Face-mesh bounding box in working px. */
+  face: Rect;
+  head: HeadBox;
+  /** Crop rectangle in working px; background is only judged inside it. */
+  rect: Rect;
+  /** Portrait matte at working resolution, when background removal has run. */
+  mask?: Uint8Array;
+  maskSize?: Size;
+}
+
+export interface PrecheckSuccess {
+  id: number;
+  ok: true;
+  metrics: ImageMetrics;
+  ms: number;
+}
+
+export type PrecheckResponse = PrecheckSuccess | WorkerFailure;
 
 /** Matte payload attached to exports when background replacement is active. */
 export interface MattePayload {

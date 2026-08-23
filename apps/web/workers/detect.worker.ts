@@ -18,6 +18,35 @@ const ctx = self as unknown as DedicatedWorkerGlobalScope;
 
 ctx.addEventListener("message", async (event: MessageEvent<DetectRequest>) => {
   const request = event.data;
+
+  // Live camera frames: landmarks only. The bitmap is consumed here.
+  if (request?.type === "frame") {
+    const { bitmap } = request;
+    try {
+      const { faces } = await detectFaces(bitmap, request.config);
+      const response: DetectResponse = {
+        id: request.id,
+        ok: true,
+        kind: "frame",
+        faces,
+        size: { width: bitmap.width, height: bitmap.height },
+      };
+      ctx.postMessage(response);
+    } catch (error) {
+      disposeFaceLandmarker();
+      const failure: DetectResponse = {
+        id: request.id,
+        ok: false,
+        code: "detect-failed",
+        message: error instanceof Error ? error.message : "Face detection failed.",
+      };
+      ctx.postMessage(failure);
+    } finally {
+      bitmap.close();
+    }
+    return;
+  }
+
   if (request?.type !== "process") return;
 
   try {

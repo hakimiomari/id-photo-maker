@@ -106,9 +106,69 @@ export interface ValidationItem {
   id: string;
   level: ValidationLevel;
   message: string;
+  /** What the user can do about it; shown under the message when not ok. */
+  hint?: string;
   /** Measured value in mm (or DPI, for resolution checks). */
   value?: number;
   range?: [number, number];
+}
+
+/** Head pose and expression, measured from the face mesh (compliance pre-check). */
+export interface PoseMetrics {
+  /** Tilt of the eye line in degrees; positive = the viewer's-right eye is lower. */
+  rollDeg: number;
+  /** Estimated left/right head turn in degrees (sign is viewer-relative). */
+  yawDeg: number;
+  /** Eye aspect ratio of the less-open eye: ~0.3 open, < 0.1 closed. */
+  eyeOpenness: number;
+  /** Inner-lip gap as a fraction of forehead-to-chin height; 0 when closed. */
+  mouthOpenRatio: number;
+}
+
+/** Luminance statistics over the face region (0–255 scale). */
+export interface FaceStats {
+  mean: number;
+  std: number;
+  /** Fraction of pixels at or above the clipping threshold. */
+  clipped: number;
+  leftMean: number;
+  rightMean: number;
+  samples: number;
+}
+
+/** Colour and uniformity of the background inside the crop. */
+export interface BackgroundStats {
+  /** Mean luminance. */
+  mean: number;
+  /** Luminance spread — the uniformity measure. */
+  std: number;
+  /** Mean (max − min) of RGB: 0 for greys, high for saturated colours. */
+  chroma: number;
+  r: number;
+  g: number;
+  b: number;
+  samples: number;
+}
+
+/** Everything the pixel scan measured for one face; evaluated separately. */
+export interface ImageMetrics {
+  face: FaceStats;
+  /** Variance of the Laplacian at a normalised face size; see SHARPNESS_ROWS. */
+  sharpness: number;
+  /** null when no background pixel fell inside the crop. */
+  background: BackgroundStats | null;
+  /** Whether the background was sampled through a portrait matte. */
+  hasMask: boolean;
+}
+
+/**
+ * The compliance pre-check verdict. Its items are heuristics, so the report
+ * never goes beyond "warn": it informs, the geometry checks decide.
+ */
+export interface ComplianceReport {
+  level: ValidationLevel;
+  checks: ValidationItem[];
+  pose: PoseMetrics | null;
 }
 
 export interface CropSolution {

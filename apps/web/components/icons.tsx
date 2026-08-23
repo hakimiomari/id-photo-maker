@@ -172,3 +172,25 @@ export function LogoMark({ className }: { className?: string }) {
     </svg>
   );
 }
+
+export function IconSwitchCamera(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M4 8h3l2-3h6l2 3h3v12H4z" />
+      <path d="M9.5 13a2.5 2.5 0 0 1 4.4-1.6" />
+      <path d="M14.5 13a2.5 2.5 0 0 1-4.4 1.6" />
+      <path d="M14 10v2h-2" />
+      <path d="M10 16v-2h2" />
+    </Svg>
+  );
+}
+
+export function IconTimer(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <circle cx="12" cy="13" r="8" />
+      <path d="M12 9v4l2.5 2" />
+      <path d="M9 3h6" />
+    </Svg>
+  );
+}
