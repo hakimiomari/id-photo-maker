@@ -42,6 +42,14 @@ export const WARN_TOLERANCE = 0.05;
 /** Below this effective DPI the export is unusable in print, not merely poor. */
 export const HARD_MIN_DPI = 200;
 
+/**
+ * Face midline offset from the crop centre, as a fraction of crop width.
+ * Beyond WARN the photo looks off-centre; beyond ERROR it is plainly not
+ * centred and gets rejected.
+ */
+export const CENTRING_WARN_FRACTION = 0.05;
+export const CENTRING_ERROR_FRACTION = 0.15;
+
 const EPS = 1e-9;
 
 export const IDENTITY_ADJUSTMENTS: CropAdjustments = {
@@ -178,12 +186,14 @@ export function solveCrop(options: SolveOptions): CropSolution {
   const rect: Rect = { x, y, width, height };
   const topMarginMm = (head.yCrown - y) * mmPerPx;
   const eyeLineFromBottomMm = (y + height - head.yEyes) * mmPerPx;
+  const centreOffsetFraction = (head.xMidline - (x + width / 2)) / width;
 
   const validations = buildValidations({
     format,
     headHeightMm,
     topMarginMm,
     eyeLineFromBottomMm,
+    centreOffsetFraction,
     cropHeightSourcePx: height * sourceScale,
     clamped,
   });
@@ -205,6 +215,8 @@ interface ValidationInput {
   headHeightMm: number;
   topMarginMm: number;
   eyeLineFromBottomMm: number;
+  /** Signed midline offset from the crop centre, as a fraction of crop width. */
+  centreOffsetFraction: number;
   cropHeightSourcePx: number;
   clamped: boolean;
 }
@@ -215,6 +227,7 @@ function buildValidations(input: ValidationInput): ValidationItem[] {
     headHeightMm,
     topMarginMm,
     eyeLineFromBottomMm,
+    centreOffsetFraction,
     cropHeightSourcePx,
     clamped,
   } = input;
@@ -266,6 +279,30 @@ function buildValidations(input: ValidationInput): ValidationItem[] {
       message: `Eye line from bottom: ${round1(eyeLineFromBottomMm)} mm (required ${format.eye_line_from_bottom_mm[0]}–${format.eye_line_from_bottom_mm[1]} mm)`,
     });
   }
+
+  const offCentre = Math.abs(centreOffsetFraction);
+  const offCentreMm = offCentre * format.width_mm;
+  // A clamped crop can be off-centre through no fault of the user (the face is
+  // near the photo's edge); that is the framing-room warning's territory, so
+  // only a deliberate drag off-centre escalates to an error.
+  const centringLevel: ValidationLevel =
+    offCentre > CENTRING_ERROR_FRACTION && !clamped
+      ? "error"
+      : offCentre > CENTRING_WARN_FRACTION
+        ? "warn"
+        : "ok";
+  items.push({
+    id: "centring",
+    level: centringLevel,
+    value: offCentreMm,
+    message:
+      centringLevel === "ok"
+        ? "Face is centred"
+        : `Face is ${round1(offCentreMm)} mm off-centre to the ${centreOffsetFraction > 0 ? "right" : "left"}`,
+    ...(centringLevel === "ok"
+      ? {}
+      : { hint: "Drag the photo so the face sits in the middle of the frame, or reset the crop." }),
+  });
 
   const dpi = effectiveDpi(cropHeightSourcePx, format.height_mm);
   const dpiLevel: ValidationLevel =

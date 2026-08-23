@@ -1,17 +1,33 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { cameraSupported } from "../lib/camera";
 import { usePhotoStore } from "../lib/store";
+import { CameraCapture } from "./CameraCapture";
 import { IconAlert, IconCamera, IconLock, IconUpload } from "./icons";
 
 export function Uploader() {
   const inputRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
+  const [cameraOpen, setCameraOpen] = useState(false);
+  // Decided after mount: getUserMedia is a browser capability, and the server
+  // render must not guess at it.
+  const [inAppCamera, setInAppCamera] = useState(false);
+  useEffect(() => setInAppCamera(cameraSupported()), []);
   const loadFile = usePhotoStore((s) => s.loadFile);
   const status = usePhotoStore((s) => s.status);
   const error = usePhotoStore((s) => s.error);
   const loading = status === "loading";
+
+  if (cameraOpen) {
+    return <CameraCapture onClose={() => setCameraOpen(false)} />;
+  }
+
+  // In-app camera (§4.7) when the browser can stream; the native camera app
+  // (file input with capture) as the phone fallback otherwise.
+  const openCamera = () =>
+    inAppCamera ? setCameraOpen(true) : cameraRef.current?.click();
 
   const handleFiles = (files: FileList | null) => {
     const file = files?.[0];
@@ -85,8 +101,8 @@ export function Uploader() {
           </button>
           <button
             type="button"
-            className="btn-secondary sm:hidden"
-            onClick={() => cameraRef.current?.click()}
+            className={inAppCamera ? "btn-secondary" : "btn-secondary sm:hidden"}
+            onClick={openCamera}
             disabled={loading}
           >
             <IconCamera className="h-4 w-4" />

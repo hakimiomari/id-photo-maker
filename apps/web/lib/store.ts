@@ -6,7 +6,9 @@ import {
   DEFAULT_FORMAT_ID,
   DEFAULT_PAPER_ID,
   estimateHeadBounds,
+  evaluateCompliance,
   foregroundRatio,
+  measurePose,
   refineCrownFromMask,
   exportFilename,
   getFormat,
@@ -14,12 +16,15 @@ import {
   NEUTRAL_ADJUSTMENTS,
   solveCrop,
   toSourceRect,
+  type ComplianceReport,
   type CropAdjustments,
   type CropSolution,
   type DetectedFace,
   type HeadBox,
   type ImageAdjustments,
+  type ImageMetrics,
   type PhotoFormat,
+  type PoseMetrics,
   type Size,
 } from "@photomaker/core";
 import { faceLandmarkerConfig, segmentConfig } from "./config";
@@ -29,6 +34,8 @@ import type {
   EncodeRequest,
   EncodeResponse,
   MattePayload,
+  PrecheckRequest,
+  PrecheckResponse,
   SegmentRequest,
   SegmentResponse,
   SheetRequest,
@@ -83,6 +90,14 @@ interface PhotoState {
   };
 
   /**
+   * Compliance pre-check (§4.6). `metrics` is the worker's pixel scan for the
+   * selected face; pose comes straight from the landmarks. Both feed the
+   * derived `compliance` report below.
+   */
+  metrics: ImageMetrics | null;
+  metricsPending: boolean;
+
+  /**
    * Derived state, recomputed once per change rather than per read.
    *
    * These must be stored values, not methods: zustand v5 runs the selector on
@@ -92,6 +107,7 @@ interface PhotoState {
    */
   head: HeadBox | null;
   solution: CropSolution | null;
+  compliance: ComplianceReport | null;
 
   /** Safe as methods — both return a stable reference or a primitive. */
   format: () => PhotoFormat;
@@ -112,6 +128,8 @@ interface PhotoState {
   exportSheet: (output: "jpeg" | "pdf") => Promise<void>;
   removeBackground: () => Promise<void>;
   clearBackground: () => void;
+  /** Re-run the pixel scan for the selected face (automatic on load/face/mask changes). */
+  runPrecheck: () => Promise<void>;
   setBackgroundFill: (fill: string) => void;
   setFeather: (feather: number) => void;
   toggleOriginal: () => void;
@@ -150,6 +168,25 @@ function segmentWorker() {
   return segmentClient;
 }
 
+/**
+ * Live camera guidance (§4.7): landmarks for one downscaled video frame. Shares
+ * the detect worker (and its loaded model) with the file pipeline. The bitmap
+ * is transferred and consumed. Resolves to [] when detection fails, so a
+ * flaky frame never breaks the preview loop.
+ */
+export async function detectFrame(bitmap: ImageBitmap): Promise<DetectedFace[]> {
+  try {
+    const response = await detectWorker().send(
+      { type: "frame", bitmap, config: faceLandmarkerConfig },
+      [bitmap],
+    );
+    return response.ok && "kind" in response ? response.faces : [];
+  } catch {
+    detectWorker().terminate();
+    return [];
+  }
+}
+
 /** The fill a format's spec asks for; white when unregulated. */
 export function requiredFill(background: PhotoFormat["background"]): string {
   return BACKGROUND_FILLS[background] ?? "#FFFFFF";
@@ -168,13 +205,39 @@ function encodeWorker() {
   return encodeClient;
 }
 
-/** Head geometry + crop solution for a given state. Pure; never throws. */
-function derive(state: PhotoState): Pick<PhotoState, "head" | "solution"> {
-  const face = state.faces[state.faceIndex];
-  if (!face || !state.workingSize) return { head: null, solution: null };
+let precheckClient: WorkerClient<PrecheckRequest, PrecheckResponse> | null = null;
 
+function precheckWorker() {
+  precheckClient ??= new WorkerClient<PrecheckRequest, PrecheckResponse>(
+    () =>
+      new Worker(new URL("../workers/precheck.worker.ts", import.meta.url), {
+        type: "module",
+      }),
+  );
+  return precheckClient;
+}
+
+/** Only the latest pixel scan may land; face switches mid-flight are dropped. */
+let precheckSeq = 0;
+
+/** The colour the export will paint behind the subject, or null to keep it. */
+function activeFill(state: PhotoState): string | null {
+  return state.mask && state.background.fill ? state.background.fill : null;
+}
+
+/** Head geometry + crop solution + compliance report. Pure; never throws. */
+function derive(
+  state: PhotoState,
+): Pick<PhotoState, "head" | "solution" | "compliance"> {
+  const face = state.faces[state.faceIndex];
+  if (!face || !state.workingSize) {
+    return { head: null, solution: null, compliance: null };
+  }
+
+  let head: HeadBox | null = null;
+  let solution: CropSolution | null = null;
   try {
-    let head = estimateHeadBounds({
+    head = estimateHeadBounds({
       landmarks: face.landmarks,
       image: state.workingSize,
     });
@@ -182,19 +245,34 @@ function derive(state: PhotoState): Pick<PhotoState, "head" | "solution"> {
     if (state.mask && state.maskSize) {
       head = refineCrownFromMask(head, state.mask, state.maskSize, state.workingSize);
     }
-    const solution = solveCrop({
+    solution = solveCrop({
       head,
       format: getFormat(state.formatId),
       image: state.workingSize,
       adjust: state.adjust,
       sourceScale: state.sourceScale,
     });
-    return { head, solution };
   } catch {
     // Degenerate landmarks (chin above crown) — the UI falls back to the
     // "no usable face" empty state rather than rendering a broken crop.
-    return { head: null, solution: null };
+    return { head: null, solution: null, compliance: null };
   }
+
+  // The pre-check is advisory, so it never takes the crop down with it.
+  let pose: PoseMetrics | null = null;
+  try {
+    pose = measurePose({ landmarks: face.landmarks, image: state.workingSize });
+  } catch {
+    pose = null;
+  }
+  const compliance = evaluateCompliance({
+    pose,
+    image: state.metrics,
+    format: getFormat(state.formatId),
+    replacementFill: activeFill(state),
+  });
+
+  return { head, solution, compliance };
 }
 
 /** Matte payload for exports — a copy, so the preview keeps its mask. */
@@ -239,11 +317,14 @@ export const usePhotoStore = create<PhotoState>((set, get) => {
     maskSize: null,
     segmenting: false,
     background: { fill: null, feather: 1, showOriginal: false },
+    metrics: null,
+    metricsPending: false,
 
     format: () => getFormat(get().formatId),
 
     head: null,
     solution: null,
+    compliance: null,
 
     stage: () => {
       const state = get();
@@ -274,11 +355,14 @@ export const usePhotoStore = create<PhotoState>((set, get) => {
         previous.source.close();
       }
       if (previous.exportResult) URL.revokeObjectURL(previous.exportResult.url);
+      precheckSeq++; // a scan of the previous photo must not land on this one
 
       setDerived({
         status: "loading",
         error: null,
         file,
+        metrics: null,
+        metricsPending: false,
         working: null,
         source: null,
         faces: [],
@@ -301,6 +385,11 @@ export const usePhotoStore = create<PhotoState>((set, get) => {
           set({ status: "error", error: response.message });
           return;
         }
+        if (!("working" in response)) {
+          // A frame response to a file request cannot happen by id; guard anyway.
+          set({ status: "error", error: "Unexpected response from the detector." });
+          return;
+        }
         if (response.faces.length === 0) {
           response.working.close();
           response.source.close();
@@ -321,6 +410,7 @@ export const usePhotoStore = create<PhotoState>((set, get) => {
           faces: response.faces,
           faceIndex: 0,
         });
+        void get().runPrecheck();
       } catch (error) {
         detectWorker().terminate();
         set({
@@ -333,8 +423,63 @@ export const usePhotoStore = create<PhotoState>((set, get) => {
       }
     },
 
-    selectFace: (index) =>
-      setDerived({ faceIndex: index, adjust: { ...IDENTITY_ADJUSTMENTS } }),
+    selectFace: (index) => {
+      // The old face's pixel metrics would be judged against the new face's
+      // landmarks — drop them until the rescan lands.
+      setDerived({
+        faceIndex: index,
+        adjust: { ...IDENTITY_ADJUSTMENTS },
+        metrics: null,
+      });
+      void get().runPrecheck();
+    },
+
+    runPrecheck: async () => {
+      const state = get();
+      const face = state.faces[state.faceIndex];
+      if (!state.working || !state.workingSize || !face || !state.head || !state.solution) {
+        return;
+      }
+      const seq = ++precheckSeq;
+      set({ metricsPending: true });
+
+      const { width, height } = state.workingSize;
+      const faceRect = {
+        x: face.bounds.x * width,
+        y: face.bounds.y * height,
+        width: face.bounds.width * width,
+        height: face.bounds.height * height,
+      };
+
+      try {
+        // Send a copy; the editor keeps drawing the original working bitmap.
+        const copy = await createImageBitmap(state.working);
+        const response = await precheckWorker().send(
+          {
+            type: "precheck",
+            bitmap: copy,
+            face: faceRect,
+            head: state.head,
+            rect: state.solution.rect,
+            ...(state.mask && state.maskSize
+              ? { mask: state.mask.slice(), maskSize: state.maskSize }
+              : {}),
+          },
+          [copy],
+        );
+        if (seq !== precheckSeq) return; // superseded by a newer scan
+
+        if (!response.ok) {
+          // Advisory feature: fail quietly, the geometry checks still stand.
+          set({ metricsPending: false });
+          return;
+        }
+        setDerived({ metrics: response.metrics, metricsPending: false });
+      } catch {
+        precheckWorker().terminate();
+        if (seq === precheckSeq) set({ metricsPending: false });
+      }
+    },
 
     pan: (dx, dy) =>
       setDerived((state) => ({
@@ -568,6 +713,8 @@ export const usePhotoStore = create<PhotoState>((set, get) => {
             showOriginal: false,
           },
         });
+        // The matte makes the background measurement exact — rescan with it.
+        void get().runPrecheck();
       } catch (error) {
         segmentWorker().terminate();
         set({
@@ -580,15 +727,18 @@ export const usePhotoStore = create<PhotoState>((set, get) => {
       }
     },
 
-    clearBackground: () =>
+    clearBackground: () => {
       setDerived({
         mask: null,
         maskSize: null,
         background: { fill: null, feather: 1, showOriginal: false },
-      }),
+      });
+      void get().runPrecheck();
+    },
 
+    // setDerived: the background check reads the fill against the spec.
     setBackgroundFill: (fill) =>
-      set((state) => ({ background: { ...state.background, fill } })),
+      setDerived((state) => ({ background: { ...state.background, fill } })),
 
     setFeather: (feather) =>
       set((state) => ({ background: { ...state.background, feather } })),
@@ -612,7 +762,10 @@ export const usePhotoStore = create<PhotoState>((set, get) => {
       state.working?.close();
       if (state.source && state.source !== state.working) state.source.close();
       if (state.exportResult) URL.revokeObjectURL(state.exportResult.url);
+      precheckSeq++; // orphan any scan still in flight
       setDerived({
+        metrics: null,
+        metricsPending: false,
         status: "idle",
         error: null,
         file: null,

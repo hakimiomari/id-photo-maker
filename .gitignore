@@ -11,3 +11,4 @@ playwright-report/
 test-results/
 apps/web/public/models/*
 !apps/web/public/models/.gitkeep
+e2e/fixtures/portrait.y4m
