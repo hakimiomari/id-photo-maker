@@ -45,6 +45,7 @@ const en = {
     take: "Take a photo",
     sample: "No photo handy? Try a sample photo",
     privacy: "Your photo is processed on your device and never uploaded.",
+    fromBatch: "From your family sheet — tap to edit again",
   },
 
   picker: {
@@ -329,6 +330,7 @@ const de: Dict = {
     take: "Foto aufnehmen",
     sample: "Kein Foto zur Hand? Beispielfoto ausprobieren",
     privacy: "Ihr Foto wird auf Ihrem Gerät verarbeitet und nie hochgeladen.",
+    fromBatch: "Aus Ihrem Familienbogen — zum erneuten Bearbeiten antippen",
   },
 
   picker: {
@@ -608,6 +610,7 @@ const fa: Dict = {
     take: "گرفتن عکس",
     sample: "عکسی ندارید؟ عکس نمونه را امتحان کنید",
     privacy: "عکس شما روی دستگاه‌تان پردازش می‌شود و هرگز آپلود نمی‌شود.",
+    fromBatch: "از برگهٔ خانوادگی شما — برای ویرایش دوباره بزنید",
   },
 
   picker: {
@@ -886,6 +889,7 @@ const ps: Dict = {
     take: "عکس واخلئ",
     sample: "عکس نه لرئ؟ نمونه عکس وازمویئ",
     privacy: "ستاسو عکس ستاسو په وسیله کې پروسس کېږي او هېڅکله نه اپلوډ کېږي.",
+    fromBatch: "ستاسو د کورنۍ پاڼې څخه — د بیا سمون لپاره یې ټک ووهئ",
   },
 
   picker: {

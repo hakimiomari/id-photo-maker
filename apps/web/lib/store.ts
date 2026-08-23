@@ -74,6 +74,11 @@ export interface BatchMember {
   /** Small data-URL preview for the member list. */
   thumbUrl: string;
   formatId: string;
+  /**
+   * The person's original photo, kept so they can be reloaded into the
+   * editor for further work (re-crop, retouch, different format…).
+   */
+  original: File | null;
 }
 
 interface PhotoState {
@@ -853,6 +858,7 @@ export const usePhotoStore = create<PhotoState>((set, get) => {
           jpeg,
           thumbUrl: await makeThumb(jpeg),
           formatId: format.id,
+          original: get().file,
         };
         set((current) => ({
           batchBusy: false,
