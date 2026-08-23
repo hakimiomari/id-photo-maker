@@ -41,6 +41,7 @@ export function Uploader() {
       const blob = await response.blob();
       await loadFile(
         new File([blob], "sample-portrait.jpg", { type: "image/jpeg" }),
+        "sample",
       );
     } catch {
       // Same-origin fetch only fails offline before first cache — harmless.

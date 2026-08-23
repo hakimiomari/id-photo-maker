@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
+import Script from "next/script";
 import { PwaRegister } from "../components/PwaRegister";
 import "./globals.css";
 
@@ -55,6 +56,18 @@ export default function RootLayout({
       */}
       <body className="min-h-dvh" suppressHydrationWarning>
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+        {/* Privacy-safe analytics (§7): cookieless, only when configured.
+            Pageviews come from the script; custom events via lib/analytics. */}
+        {process.env.NEXT_PUBLIC_ANALYTICS_DOMAIN && (
+          <Script
+            src={
+              process.env.NEXT_PUBLIC_ANALYTICS_SRC ??
+              "https://plausible.io/js/script.js"
+            }
+            data-domain={process.env.NEXT_PUBLIC_ANALYTICS_DOMAIN}
+            strategy="afterInteractive"
+          />
+        )}
         <a
           href="#main"
           className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-surface focus:px-4 focus:py-2"

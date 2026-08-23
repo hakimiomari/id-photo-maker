@@ -27,6 +27,7 @@ import {
   type PoseMetrics,
   type Size,
 } from "@photomaker/core";
+import { track } from "./analytics";
 import { faceLandmarkerConfig, segmentConfig } from "./config";
 import type {
   BatchSheetRequest,
@@ -134,7 +135,7 @@ interface PhotoState {
 
   setFormat: (id: string) => void;
   setPaper: (id: string) => void;
-  loadFile: (file: File) => Promise<void>;
+  loadFile: (file: File, origin?: "file" | "camera" | "sample") => Promise<void>;
   selectFace: (index: number) => void;
   pan: (dx: number, dy: number) => void;
   zoomBy: (factor: number) => void;
@@ -378,6 +379,7 @@ export const usePhotoStore = create<PhotoState>((set, get) => {
 
     setFormat: (id) => {
       getFormat(id); // throws early on a bad id rather than rendering nonsense
+      track("format_selected", { format: id });
       // Dropping a result must also release its object URL.
       const previousResult = get().exportResult;
       if (previousResult) URL.revokeObjectURL(previousResult.url);
@@ -388,7 +390,7 @@ export const usePhotoStore = create<PhotoState>((set, get) => {
       });
     },
 
-    loadFile: async (file) => {
+    loadFile: async (file, origin = "file") => {
       const previous = get();
       previous.working?.close();
       if (previous.source && previous.source !== previous.working) {
@@ -441,6 +443,7 @@ export const usePhotoStore = create<PhotoState>((set, get) => {
           return;
         }
 
+        track("photo_loaded", { source: origin });
         setDerived({
           status: "ready",
           working: response.working,
@@ -613,6 +616,10 @@ export const usePhotoStore = create<PhotoState>((set, get) => {
 
         const previous = get().exportResult;
         if (previous) URL.revokeObjectURL(previous.url);
+        track("photo_exported", {
+          kind: digitalSpec ? "digital" : "print",
+          format: format.id,
+        });
         set({
           exporting: false,
           source: response.source,
@@ -686,6 +693,11 @@ export const usePhotoStore = create<PhotoState>((set, get) => {
         // Sheet responses carry the bitmap back; batch responses never do.
         if (!("copies" in response) || !("source" in response)) return;
 
+        track("sheet_exported", {
+          output,
+          paper: state.paperId,
+          format: format.id,
+        });
         const previous = get().exportResult;
         if (previous) URL.revokeObjectURL(previous.url);
         const extension = output === "pdf" ? "pdf" : "jpg";
@@ -820,6 +832,7 @@ export const usePhotoStore = create<PhotoState>((set, get) => {
         }
         if (!("kind" in response) || response.kind !== "batch") return;
 
+        track("family_sheet_exported", { output, people: state.batch.length });
         const previous = get().exportResult;
         if (previous) URL.revokeObjectURL(previous.url);
         const extension = output === "pdf" ? "pdf" : "jpg";
@@ -875,6 +888,7 @@ export const usePhotoStore = create<PhotoState>((set, get) => {
           return;
         }
 
+        track("background_removed", { backend: response.backend });
         // setDerived: the mask also refines the crown, which can change the
         // measured head height and therefore the validation verdict.
         setDerived({
