@@ -28,8 +28,22 @@ test("two people → one family sheet, byte-verified", async ({ page, request })
   await expect(page.getByRole("button", { name: "Try a sample photo" })).toBeVisible();
   await expect(panel().getByText("Person 1")).toBeVisible();
 
-  // Collected members are reloadable from the uploader for further editing.
+  // Collected members are reloadable from the uploader for further editing —
+  // by drag-and-drop onto the dropzone (desktop) as well as by tap.
   await expect(page.getByText(/From your family sheet/)).toBeVisible();
+  await page.evaluate(() => {
+    const transfer = new DataTransfer();
+    transfer.setData("application/x-photomaker-member", "1");
+    document
+      .querySelector(".border-dashed")!
+      .dispatchEvent(
+        new DragEvent("drop", { bubbles: true, cancelable: true, dataTransfer: transfer }),
+      );
+  });
+  await expect(page.getByRole("button", { name: "Use another photo" })).toBeVisible({
+    timeout: 60_000,
+  });
+  await page.getByRole("button", { name: /Add another person/ }).click();
   await page.getByRole("button", { name: "Person 1", exact: true }).click();
   await expect(page.getByRole("button", { name: "Use another photo" })).toBeVisible({
     timeout: 60_000,
