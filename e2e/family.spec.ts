@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { expandChecks, openDownloadTab } from "./shell";
 
 /**
  * Family/batch mode (§9): two people share one print sheet. Uses the sample
@@ -20,6 +21,7 @@ test("two people → one family sheet, byte-verified", async ({ page, request })
   await expect(page.getByRole("button", { name: "Use another photo" })).toBeVisible({
     timeout: 60_000,
   });
+  await openDownloadTab(page, "Family sheet");
   await page.getByRole("button", { name: "Add this photo to a family sheet" }).click();
   await expect(panel().getByText("Person 1")).toBeVisible({ timeout: 30_000 });
 
@@ -43,13 +45,17 @@ test("two people → one family sheet, byte-verified", async ({ page, request })
   await expect(page.getByRole("button", { name: "Use another photo" })).toBeVisible({
     timeout: 60_000,
   });
+  await openDownloadTab(page, "Family sheet");
   await page.getByRole("button", { name: /Add another person/ }).click();
   await page.getByRole("button", { name: "Person 1", exact: true }).click();
   await expect(page.getByRole("button", { name: "Use another photo" })).toBeVisible({
     timeout: 60_000,
   });
-  // Their photo is back in the editor; the batch entry itself is untouched.
+  // Their photo is back in the editor; the batch entry itself is untouched
+  // (visible again under Download → Family sheet).
+  await expandChecks(page);
   await expect(page.getByText(/Head height: [\d.]+ mm/)).toBeVisible();
+  await openDownloadTab(page, "Family sheet");
   await expect(panel().getByText("Person 1")).toBeVisible();
 
   // Back to the uploader for the real second person.
@@ -60,6 +66,7 @@ test("two people → one family sheet, byte-verified", async ({ page, request })
   await expect(page.getByRole("button", { name: "Use another photo" })).toBeVisible({
     timeout: 60_000,
   });
+  await openDownloadTab(page, "Family sheet");
   await page.getByRole("button", { name: "Add this photo too" }).click();
   await expect(panel().getByText("Person 2")).toBeVisible({ timeout: 30_000 });
 

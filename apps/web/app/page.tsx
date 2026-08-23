@@ -10,25 +10,139 @@ import { FamilyPanel } from "../components/FamilyPanel";
 import { FormatPicker } from "../components/FormatPicker";
 import { RetouchPanel } from "../components/RetouchPanel";
 import { SheetPanel } from "../components/SheetPanel";
+import { StatusBanner } from "../components/StatusBanner";
 import { Uploader } from "../components/Uploader";
-import { ValidationPanel } from "../components/ValidationPanel";
 import { IconCheck, IconLock, LogoMark } from "../components/icons";
-import { ThemeToggle } from "../components/ThemeToggle";
-import { initLocale, useT } from "../lib/i18n";
 import { LanguagePicker } from "../components/LanguagePicker";
-import { usePhotoStore } from "../lib/store";
+import { ThemeToggle } from "../components/ThemeToggle";
+import { initLocale, useT, type Dict } from "../lib/i18n";
+import {
+  usePhotoStore,
+  type AdjustTab,
+  type DownloadTab,
+  type ShellStep,
+} from "../lib/store";
 
 const STEP_IDS = ["format", "photo", "adjust", "download"] as const;
 
-function FamilyPanelCard() {
-  // Outside the ready-only group: the collected family members must stay
-  // visible while the next person's photo is being chosen.
-  const hasBatch = usePhotoStore((s) => s.batch.length > 0);
-  const ready = usePhotoStore((s) => s.status === "ready");
-  if (!hasBatch && !ready) return null;
+/** Where the stepper highlight sits for a given shell step. */
+const STEP_INDEX: Record<ShellStep, number> = { format: 0, adjust: 2, download: 3 };
+
+function Tabs<Id extends string>({
+  tabs,
+  active,
+  onSelect,
+  label,
+}: {
+  tabs: { id: Id; label: string; dot?: boolean }[];
+  active: Id;
+  onSelect: (id: Id) => void;
+  label: string;
+}) {
   return (
-    <section className="card p-5">
-      <FamilyPanel />
+    <div role="tablist" aria-label={label} className="flex border-b border-line">
+      {tabs.map((tab) => {
+        const selected = tab.id === active;
+        return (
+          <button
+            key={tab.id}
+            type="button"
+            role="tab"
+            aria-selected={selected}
+            onClick={() => onSelect(tab.id)}
+            className={`relative min-h-[42px] flex-1 px-1 text-xs transition-colors duration-150 ${
+              selected
+                ? "-mb-px border-b-2 border-accent font-semibold text-accent"
+                : "text-ink-faint hover:text-ink"
+            }`}
+          >
+            {tab.label}
+            {tab.dot && (
+              <span
+                aria-hidden
+                className="absolute end-[12%] top-2 h-1.5 w-1.5 rounded-full bg-accent"
+              />
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** One-line format summary (§app-shell redline C) — the picker moved to step ①. */
+function FormatChip({ t }: { t: Dict }) {
+  const format = usePhotoStore((s) => s.format());
+  const setStep = usePhotoStore((s) => s.setStep);
+  const { locale } = useT();
+  return (
+    <div className="flex items-center gap-2.5 rounded-card border border-line bg-surface px-4 py-2.5 text-[13px] shadow-card">
+      <span className="min-w-0 flex-1 truncate">
+        <b className="font-semibold">{formatLabel(format, locale)}</b>{" "}
+        <span className="text-ink-muted">
+          · {format.width_mm} × {format.height_mm} mm
+        </span>
+      </span>
+      <button
+        type="button"
+        onClick={() => setStep("format")}
+        className="shrink-0 text-xs font-medium text-accent hover:underline"
+      >
+        {t.shell.change}
+      </button>
+    </div>
+  );
+}
+
+function AdjustView({ t }: { t: Dict }) {
+  const tab = usePhotoStore((s) => s.view.adjustTab);
+  const setAdjustTab = usePhotoStore((s) => s.setAdjustTab);
+  const hasMatte = usePhotoStore((s) => Boolean(s.mask && s.background.fill));
+  const hasRetouch = usePhotoStore(
+    (s) => s.retouch.ops.length > 0 || s.retouch.attire !== null,
+  );
+  return (
+    <section className="card overflow-hidden">
+      <Tabs<AdjustTab>
+        label={t.steps.adjust}
+        active={tab}
+        onSelect={setAdjustTab}
+        tabs={[
+          { id: "crop", label: t.shell.crop },
+          { id: "background", label: t.bg.eyebrow, dot: hasMatte },
+          { id: "retouch", label: t.retouch.eyebrow, dot: hasRetouch },
+        ]}
+      />
+      <div className="p-5">
+        {tab === "crop" && <AdjustPanel />}
+        {tab === "background" && <BackgroundPanel />}
+        {tab === "retouch" && <RetouchPanel />}
+      </div>
+    </section>
+  );
+}
+
+function DownloadView({ t }: { t: Dict }) {
+  const tab = usePhotoStore((s) => s.view.downloadTab);
+  const setDownloadTab = usePhotoStore((s) => s.setDownloadTab);
+  const hasBatch = usePhotoStore((s) => s.batch.length > 0);
+  return (
+    <section className="card overflow-hidden">
+      <Tabs<DownloadTab>
+        label={t.steps.download}
+        active={tab}
+        onSelect={setDownloadTab}
+        tabs={[
+          { id: "photo", label: t.steps.photo },
+          { id: "sheet", label: t.sheet.eyebrow },
+          { id: "family", label: t.family.eyebrow, dot: hasBatch },
+        ]}
+      />
+      <div className="p-5">
+        {tab === "photo" && <ExportPanel />}
+        {tab === "sheet" && <SheetPanel />}
+        {tab === "family" && <FamilyPanel />}
+      </div>
     </section>
   );
 }
@@ -36,11 +150,18 @@ function FamilyPanelCard() {
 export default function Home() {
   const status = usePhotoStore((s) => s.status);
   const stage = usePhotoStore((s) => s.stage());
-  const format = usePhotoStore((s) => s.format());
+  const view = usePhotoStore((s) => s.view);
+  const setStep = usePhotoStore((s) => s.setStep);
+  const hasBatch = usePhotoStore((s) => s.batch.length > 0);
   const reset = usePhotoStore((s) => s.reset);
   const ready = status === "ready";
-  const stageIndex = STEP_IDS.indexOf(stage);
-  const { t, locale } = useT();
+  const { t } = useT();
+
+  // Before a photo is ready the stepper mirrors progress, as before; once
+  // ready it mirrors (and drives) the shell's view.
+  const stageIndex = ready
+    ? STEP_INDEX[view.step]
+    : STEP_IDS.indexOf(stage === "download" ? "adjust" : stage);
 
   // SEO pages deep-link into the editor with ?format=<id>&lang=<locale> (§8.3).
   useEffect(() => {
@@ -73,38 +194,58 @@ export default function Home() {
         </div>
       </header>
 
-      <ol
-        aria-label="Progress"
-        className="mb-7 flex items-center gap-2 sm:gap-3"
-      >
+      <ol aria-label="Progress" className="mb-7 flex items-center gap-2 sm:gap-3">
         {STEP_IDS.map((stepId, index) => {
           const current = index === stageIndex;
           const done = index < stageIndex;
-          return (
-            <li key={stepId} className="flex min-w-0 flex-1 items-center gap-2 last:flex-none sm:gap-3">
+          // Once ready, Format / Adjust / Download navigate (redline D);
+          // "Photo" stays a marker — replacing the photo is an explicit button.
+          const target: ShellStep | null =
+            ready && stepId !== "photo" ? (stepId as ShellStep) : null;
+          const marker = (
+            <>
               <span
-                aria-current={current ? "step" : undefined}
-                className="flex shrink-0 items-center gap-2"
+                className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold transition-colors duration-200 ${
+                  current
+                    ? "bg-accent text-surface shadow-[0_1px_2px_rgba(15,23,42,0.2)]"
+                    : done
+                      ? "bg-accent-soft text-accent"
+                      : "border border-line-strong bg-surface text-ink-faint"
+                }`}
               >
-                <span
-                  className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold transition-colors duration-200 ${
-                    current
-                      ? "bg-accent text-surface shadow-[0_1px_2px_rgba(15,23,42,0.2)]"
-                      : done
-                        ? "bg-accent-soft text-accent"
-                        : "border border-line-strong bg-surface text-ink-faint"
-                  }`}
-                >
-                  {done ? <IconCheck className="h-3.5 w-3.5" strokeWidth={2.5} /> : index + 1}
-                </span>
-                <span
-                  className={`text-xs font-medium ${
-                    current ? "text-ink" : done ? "text-ink-muted" : "text-ink-faint"
-                  } ${current ? "" : "hidden sm:inline"}`}
-                >
-                  {t.steps[stepId]}
-                </span>
+                {done ? <IconCheck className="h-3.5 w-3.5" strokeWidth={2.5} /> : index + 1}
               </span>
+              <span
+                className={`text-xs font-medium ${
+                  current ? "text-ink" : done ? "text-ink-muted" : "text-ink-faint"
+                } ${current ? "" : "hidden sm:inline"}`}
+              >
+                {t.steps[stepId]}
+              </span>
+            </>
+          );
+          return (
+            <li
+              key={stepId}
+              className="flex min-w-0 flex-1 items-center gap-2 last:flex-none sm:gap-3"
+            >
+              {target ? (
+                <button
+                  type="button"
+                  aria-current={current ? "step" : undefined}
+                  onClick={() => setStep(target)}
+                  className="flex shrink-0 items-center gap-2 rounded-full"
+                >
+                  {marker}
+                </button>
+              ) : (
+                <span
+                  aria-current={current ? "step" : undefined}
+                  className="flex shrink-0 items-center gap-2"
+                >
+                  {marker}
+                </span>
+              )}
               {index < STEP_IDS.length - 1 && (
                 <span
                   aria-hidden
@@ -123,9 +264,8 @@ export default function Home() {
               <Editor />
               <div className="flex flex-wrap items-center justify-between gap-3 text-[13px] text-ink-faint">
                 <span>
-                  {t.hintIntro}{" "}
-                  <kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd> <kbd>↓</kbd> {t.hintPan}{" "}
-                  <kbd>+</kbd> <kbd>−</kbd> {t.hintZoom}
+                  {t.hintIntro} <kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd> <kbd>↓</kbd>{" "}
+                  {t.hintPan} <kbd>+</kbd> <kbd>−</kbd> {t.hintZoom}
                 </span>
                 <button type="button" className="btn-secondary" onClick={reset}>
                   {t.useAnother}
@@ -137,38 +277,34 @@ export default function Home() {
           )}
         </div>
 
-        <aside className="space-y-5">
-          <section className="card p-5">
-            <p className="eyebrow">{t.steps.format}</p>
-            <h2 className="mb-4 mt-1 text-sm font-semibold">
-              {formatLabel(format, locale)} · {format.width_mm} × {format.height_mm} mm
-            </h2>
-            <FormatPicker />
-          </section>
-
-          {ready && (
+        <aside className="space-y-4">
+          {ready ? (
+            <>
+              <StatusBanner />
+              <FormatChip t={t} />
+              {view.step === "format" && (
+                <section className="card p-5">
+                  <p className="eyebrow mb-4">{t.steps.format}</p>
+                  <FormatPicker />
+                </section>
+              )}
+              {view.step === "adjust" && <AdjustView t={t} />}
+              {view.step === "download" && <DownloadView t={t} />}
+            </>
+          ) : (
             <>
               <section className="card p-5">
-                <ValidationPanel />
+                <p className="eyebrow">{t.steps.format}</p>
+                <FormatHeading />
+                <FormatPicker />
               </section>
-              <section className="card p-5">
-                <AdjustPanel />
-              </section>
-              <section className="card p-5">
-                <BackgroundPanel />
-              </section>
-              <section className="card p-5">
-                <RetouchPanel />
-              </section>
-              <section className="card p-5">
-                <ExportPanel />
-              </section>
-              <section className="card p-5">
-                <SheetPanel />
-              </section>
+              {hasBatch && (
+                <section className="card p-5">
+                  <FamilyPanel />
+                </section>
+              )}
             </>
           )}
-          <FamilyPanelCard />
         </aside>
       </div>
 
@@ -185,5 +321,15 @@ export default function Home() {
         </div>
       </footer>
     </main>
+  );
+}
+
+function FormatHeading() {
+  const format = usePhotoStore((s) => s.format());
+  const { locale } = useT();
+  return (
+    <h2 className="mb-4 mt-1 text-sm font-semibold">
+      {formatLabel(format, locale)} · {format.width_mm} × {format.height_mm} mm
+    </h2>
   );
 }

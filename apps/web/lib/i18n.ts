@@ -35,6 +35,11 @@ const en = {
   languageAria: "Language",
   theme: { light: "Light", dark: "Dark", system: "System" },
 
+  shell: {
+    crop: "Crop",
+    change: "Change",
+    checksAria: "Photo checks",
+  },
   uploader: {
     title: "Add your photo",
     reading: "Reading your photo…",
@@ -320,6 +325,11 @@ const de: Dict = {
   languageAria: "Sprache",
   theme: { light: "Hell", dark: "Dunkel", system: "System" },
 
+  shell: {
+    crop: "Zuschnitt",
+    change: "Ändern",
+    checksAria: "Foto-Prüfungen",
+  },
   uploader: {
     title: "Foto hinzufügen",
     reading: "Foto wird gelesen…",
@@ -600,6 +610,11 @@ const fa: Dict = {
   languageAria: "زبان",
   theme: { light: "روشن", dark: "تاریک", system: "سیستم" },
 
+  shell: {
+    crop: "برش",
+    change: "تغییر",
+    checksAria: "بررسی‌های عکس",
+  },
   uploader: {
     title: "عکس خود را اضافه کنید",
     reading: "در حال خواندن عکس…",
@@ -879,6 +894,11 @@ const ps: Dict = {
   languageAria: "ژبه",
   theme: { light: "روښانه", dark: "تیاره", system: "سیسټم" },
 
+  shell: {
+    crop: "برش",
+    change: "بدلون",
+    checksAria: "د عکس کتنې",
+  },
   uploader: {
     title: "خپل عکس اضافه کړئ",
     reading: "عکس لوستل کېږي…",
