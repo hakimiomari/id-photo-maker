@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { openAdjustTab, openDownloadTab } from "./shell";
 
 /**
  * Manual retouch tools: heal tap, smoothing stroke, custom uploaded attire,
@@ -22,6 +23,7 @@ test("heal + smooth + custom attire → export", async ({ page, request }) => {
   expect(box).not.toBeNull();
 
   // Heal: pick the tool, tap the face area.
+  await openAdjustTab(page, "Retouch");
   await page.getByRole("button", { name: "Heal spots" }).click();
   await canvas.click({ position: { x: box!.width / 2, y: box!.height / 2 } });
   await expect(page.getByText("1 edit", { exact: true })).toBeVisible();
@@ -70,6 +72,7 @@ test("heal + smooth + custom attire → export", async ({ page, request }) => {
   await expect(page.getByRole("button", { name: "Remove attire" })).toBeVisible();
 
   // Export carries the retouch pipeline (ops replay + attire at source res).
+  await openDownloadTab(page, "Photo");
   await page.getByRole("button", { name: /Download photo \(JPEG\)/ }).click();
   await expect(page.getByText("Your photo is ready.")).toBeVisible({ timeout: 60_000 });
 });
@@ -84,6 +87,7 @@ test("retouch is locked on strict formats with an explanation", async ({ page, r
     timeout: 60_000,
   });
 
+  await openAdjustTab(page, "Retouch");
   await expect(page.getByText(/Retouching is disabled for this document/)).toBeVisible();
   await expect(page.getByRole("button", { name: "Heal spots" })).toHaveCount(0);
 });

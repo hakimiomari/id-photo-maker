@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { expandChecks } from "./shell";
 
 /**
  * Offline verification (spec §5.7): after one online visit that exercises
@@ -45,6 +46,7 @@ test("full pipeline works offline after first use", async ({
   await expect(
     page.getByRole("button", { name: "Use another photo" }),
   ).toBeVisible({ timeout: 60_000 });
+  await expandChecks(page);
   await expect(page.getByText(/Head height: [\d.]+ mm/)).toBeVisible();
 
   await context.setOffline(false);

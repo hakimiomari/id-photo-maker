@@ -49,6 +49,11 @@ import type {
 import { WorkerClient } from "./workerClient";
 
 export type Stage = "format" | "photo" | "adjust" | "download";
+
+/** The app shell's navigation state: which step and which tool tab is open. */
+export type ShellStep = "format" | "adjust" | "download";
+export type AdjustTab = "crop" | "background" | "retouch";
+export type DownloadTab = "photo" | "sheet" | "family";
 export type Status = "idle" | "loading" | "ready" | "error";
 
 export interface ExportResult {
@@ -157,10 +162,16 @@ interface PhotoState {
   solution: CropSolution | null;
   compliance: ComplianceReport | null;
 
+  /** Shell navigation (§app-shell): one step and one tab visible at a time. */
+  view: { step: ShellStep; adjustTab: AdjustTab; downloadTab: DownloadTab };
+
   /** Safe as methods — both return a stable reference or a primitive. */
   format: () => PhotoFormat;
   stage: () => Stage;
 
+  setStep: (step: ShellStep) => void;
+  setAdjustTab: (tab: AdjustTab) => void;
+  setDownloadTab: (tab: DownloadTab) => void;
   setFormat: (id: string) => void;
   setPaper: (id: string) => void;
   loadFile: (file: File, origin?: "file" | "camera" | "sample") => Promise<void>;
@@ -423,6 +434,7 @@ export const usePhotoStore = create<PhotoState>((set, get) => {
     metricsPending: false,
     batch: [],
     batchBusy: false,
+    view: { step: "adjust", adjustTab: "crop", downloadTab: "photo" },
     retouch: {
       tool: "none",
       ops: [],
@@ -445,11 +457,30 @@ export const usePhotoStore = create<PhotoState>((set, get) => {
       return "format";
     },
 
+    setStep: (step) => set((state) => ({ view: { ...state.view, step } })),
+
+    setAdjustTab: (tab) =>
+      set((state) => ({
+        view: { ...state.view, step: "adjust", adjustTab: tab },
+      })),
+
+    setDownloadTab: (tab) =>
+      set((state) => ({
+        view: { ...state.view, step: "download", downloadTab: tab },
+      })),
+
     setPaper: (id) => set({ paperId: id }),
 
     setFormat: (id) => {
       getFormat(id); // throws early on a bad id rather than rendering nonsense
       track("format_selected", { format: id });
+      // Picking from the in-shell format view returns to Adjust; when no photo
+      // is loaded yet this is a no-op the uploader never sees.
+      set((state) =>
+        state.status === "ready" && state.view.step === "format"
+          ? { view: { ...state.view, step: "adjust" } }
+          : {},
+      );
       // Dropping a result must also release its object URL.
       const previousResult = get().exportResult;
       if (previousResult) URL.revokeObjectURL(previousResult.url);
@@ -520,6 +551,7 @@ export const usePhotoStore = create<PhotoState>((set, get) => {
         }
 
         track("photo_loaded", { source: origin });
+        set({ view: { step: "adjust", adjustTab: "crop", downloadTab: "photo" } });
         setDerived({
           status: "ready",
           working: response.working,

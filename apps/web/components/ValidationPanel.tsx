@@ -6,7 +6,7 @@ import { localizeCheck, useT, type Dict } from "../lib/i18n";
 import { usePhotoStore } from "../lib/store";
 import { IconAlert, IconCheck, IconReset, IconX } from "./icons";
 
-const BANNER: Record<ValidationLevel, string> = {
+export const BANNER: Record<ValidationLevel, string> = {
   ok: "border-ok-border bg-ok-soft text-ok",
   warn: "border-warn-border bg-warn-soft text-warn",
   error: "border-danger-border bg-danger-soft text-danger",
@@ -122,6 +122,16 @@ function ManualChecklist({ t }: { t: Dict }) {
   );
 }
 
+/** Worst of framing + compliance — the shell's status banner reads this too. */
+export function useOverallLevel(): ValidationLevel | null {
+  const solution = usePhotoStore((s) => s.solution);
+  const compliance = usePhotoStore((s) => s.compliance);
+  if (!solution) return null;
+  return worst(solution.level, compliance?.level);
+}
+
+export { LevelGlyph };
+
 export function ValidationPanel() {
   // `solution` and `compliance` are derived state, so their identities change
   // whenever the crop, format, selected face or scan does — no extra
@@ -135,21 +145,8 @@ export function ValidationPanel() {
 
   if (!solution) return null;
 
-  const level = worst(solution.level, compliance?.level);
-
   return (
     <section aria-label={t.checks.eyebrow} className="space-y-4">
-      <p className="eyebrow">{t.checks.eyebrow}</p>
-
-      <div
-        role="status"
-        aria-live="polite"
-        className={`flex items-center gap-2.5 rounded-control border px-3.5 py-2.5 text-sm font-semibold ${BANNER[level]}`}
-      >
-        <LevelGlyph level={level} />
-        {t.checks.headline[level]}
-      </div>
-
       <div className="space-y-2.5">
         <h3 className="text-xs font-semibold text-ink">{t.checks.framing}</h3>
         <CheckList items={solution.validations} t={t} />

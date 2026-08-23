@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { expandChecks, openDownloadTab } from "./shell";
 
 /**
  * Full-pipeline test: the bundled sample portrait through detection → crop →
@@ -27,13 +28,15 @@ test("sample photo → detection → sheet PDF, byte-verified", async ({
     page.getByRole("button", { name: "Use another photo" }),
   ).toBeVisible({ timeout: 60_000 });
 
-  // The checks panel renders real measurements from the solver.
-  await expect(page.getByRole("status")).toContainText(
+  // The status banner carries the verdict; the list expands from it.
+  await expect(page.getByRole("button", { name: "Photo checks" })).toContainText(
     /Ready to download|Usable, with warnings/,
   );
+  await expandChecks(page);
   await expect(page.getByText(/Head height: [\d.]+ mm/)).toBeVisible();
 
-  // Sheet download: PDF is the default file-type chip; one button acts.
+  // Sheet download lives under Download → Print sheet since the app shell.
+  await openDownloadTab(page, "Print sheet");
   await expect(
     page.getByRole("button", { name: "PDF · recommended" }),
   ).toHaveAttribute("aria-pressed", "true");
@@ -57,6 +60,7 @@ test("sample photo → detection → sheet PDF, byte-verified", async ({
   // Single-photo export still works after the sheet round-trip — this is the
   // regression test for the transferred-bitmap ownership bug.
   await page.getByRole("button", { name: "Keep editing" }).click();
+  await openDownloadTab(page, "Photo");
   await page.getByRole("button", { name: /Download photo \(JPEG\)/ }).click();
   await expect(page.getByText("Your photo is ready.")).toBeVisible({
     timeout: 30_000,
