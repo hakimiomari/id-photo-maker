@@ -19,6 +19,7 @@ export function Uploader() {
   const loadFile = usePhotoStore((s) => s.loadFile);
   const status = usePhotoStore((s) => s.status);
   const error = usePhotoStore((s) => s.error);
+  const batch = usePhotoStore((s) => s.batch);
   const errorCode = usePhotoStore((s) => s.errorCode);
   const { t } = useT();
   const loading = status === "loading";
@@ -117,6 +118,44 @@ export function Uploader() {
         >
           {t.uploader.sample}
         </button>
+
+        {batch.length > 0 && (
+          <div className="mt-1 w-full max-w-sm rounded-control border border-line bg-canvas p-3">
+            <p className="mb-2 text-xs font-medium text-ink-muted">
+              {t.uploader.fromBatch}
+            </p>
+            <ul className="flex flex-wrap justify-center gap-2">
+              {batch.map((member) => (
+                <li key={member.id}>
+                  <button
+                    type="button"
+                    disabled={loading}
+                    aria-label={member.label}
+                    title={member.label}
+                    onClick={() => {
+                      // Prefer the person's original photo (full re-editing
+                      // freedom); fall back to their rendered result.
+                      const file =
+                        member.original ??
+                        new File([member.jpeg], `${member.label}.jpg`, {
+                          type: "image/jpeg",
+                        });
+                      void loadFile(file);
+                    }}
+                    className="group flex flex-col items-center gap-1"
+                  >
+                    <img
+                      src={member.thumbUrl}
+                      alt=""
+                      className="h-14 w-auto rounded-[5px] border border-line-strong transition-transform duration-150 group-hover:scale-105"
+                    />
+                    <span className="text-[11px] text-ink-faint">{member.label}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         <p className="mt-2 inline-flex items-center gap-1.5 text-xs text-ink-faint">
           <IconLock className="h-3.5 w-3.5" />
