@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useT } from "../lib/i18n";
 import { IconMonitor, IconMoon, IconSun } from "./icons";
 
 /**
@@ -27,12 +28,13 @@ function apply(mode: ThemeMode): void {
 }
 
 const MODES = [
-  { id: "light", label: "Light", Icon: IconSun },
-  { id: "dark", label: "Dark", Icon: IconMoon },
-  { id: "system", label: "System", Icon: IconMonitor },
+  { id: "light", Icon: IconSun },
+  { id: "dark", Icon: IconMoon },
+  { id: "system", Icon: IconMonitor },
 ] as const;
 
 export function ThemeToggle() {
+  const { t } = useT();
   // Render the neutral default on the server; the real mode arrives in the
   // effect, after hydration, so markup always matches.
   const [mode, setMode] = useState<ThemeMode | null>(null);
@@ -64,15 +66,15 @@ export function ThemeToggle() {
       aria-label="Colour theme"
       className="flex items-center gap-0.5 rounded-full border border-line bg-surface p-0.5"
     >
-      {MODES.map(({ id, label, Icon }) => {
+      {MODES.map(({ id, Icon }) => {
         const selected = mode === id;
         return (
           <button
             key={id}
             type="button"
             aria-pressed={selected}
-            aria-label={label}
-            title={label}
+            aria-label={t.theme[id]}
+            title={t.theme[id]}
             onClick={() => select(id)}
             className={`flex h-8 w-8 items-center justify-center rounded-full transition-colors duration-150 ${
               selected

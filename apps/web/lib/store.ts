@@ -79,6 +79,8 @@ interface PhotoState {
   paperId: string;
   status: Status;
   error: string | null;
+  /** Failure code matching the worker/ingest error vocabulary — for localization. */
+  errorCode: string | null;
   /** Kept so the pipeline can be re-run if a worker dies mid-session. */
   file: File | null;
   working: ImageBitmap | null;
@@ -341,6 +343,7 @@ export const usePhotoStore = create<PhotoState>((set, get) => {
     paperId: DEFAULT_PAPER_ID,
     status: "idle",
     error: null,
+    errorCode: null,
     file: null,
     working: null,
     source: null,
@@ -402,6 +405,7 @@ export const usePhotoStore = create<PhotoState>((set, get) => {
       setDerived({
         status: "loading",
         error: null,
+        errorCode: null,
         file,
         metrics: null,
         metricsPending: false,
@@ -437,6 +441,7 @@ export const usePhotoStore = create<PhotoState>((set, get) => {
           response.source.close();
           set({
             status: "error",
+            errorCode: "no-face",
             error:
               "No face found in that photo. Use a clear, front-facing portrait with the whole head visible.",
           });
@@ -574,7 +579,7 @@ export const usePhotoStore = create<PhotoState>((set, get) => {
 
       // Keep any previous result visible while the new one renders — removing
       // it here collapses the sidebar and makes the whole page jump.
-      set({ exporting: true, error: null });
+      set({ exporting: true, error: null, errorCode: null });
 
       const matte = buildMatte(state);
 
@@ -608,6 +613,7 @@ export const usePhotoStore = create<PhotoState>((set, get) => {
           set({
             exporting: false,
             error: response.message,
+          errorCode: response.code,
             source: response.source ?? null,
           });
           return;
@@ -662,7 +668,7 @@ export const usePhotoStore = create<PhotoState>((set, get) => {
 
       const format = state.format();
       // As in exportPhoto: leave the previous result in place until replaced.
-      set({ exporting: true, error: null });
+      set({ exporting: true, error: null, errorCode: null });
 
       const matte = buildMatte(state);
 
@@ -686,6 +692,7 @@ export const usePhotoStore = create<PhotoState>((set, get) => {
           set({
             exporting: false,
             error: response.message,
+          errorCode: response.code,
             source: response.source ?? null,
           });
           return;
@@ -744,7 +751,7 @@ export const usePhotoStore = create<PhotoState>((set, get) => {
         return;
       }
 
-      set({ batchBusy: true, exporting: true, error: null });
+      set({ batchBusy: true, exporting: true, error: null, errorCode: null });
       const matte = buildMatte(state);
       try {
         const response = await encodeWorker().send(
@@ -766,6 +773,7 @@ export const usePhotoStore = create<PhotoState>((set, get) => {
             batchBusy: false,
             exporting: false,
             error: response.message,
+          errorCode: response.code,
             source: response.source ?? null,
           });
           return;
@@ -814,7 +822,7 @@ export const usePhotoStore = create<PhotoState>((set, get) => {
       if (state.batch.length === 0 || state.batchBusy || state.exporting) return;
 
       const format = getFormat(state.batch[0]!.formatId);
-      set({ batchBusy: true, error: null });
+      set({ batchBusy: true, error: null, errorCode: null });
       try {
         // Send copies; members stay reusable for the next paper size.
         const response = await encodeWorker().send({
@@ -865,7 +873,7 @@ export const usePhotoStore = create<PhotoState>((set, get) => {
     removeBackground: async () => {
       const state = get();
       if (!state.working || state.segmenting) return;
-      set({ segmenting: true, error: null });
+      set({ segmenting: true, error: null, errorCode: null });
 
       try {
         // Send a copy; the editor keeps drawing the original working bitmap.

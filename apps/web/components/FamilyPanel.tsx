@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { assignCells, countsPerMember, getFormat, getPaper, layoutSheet, paperLabel } from "@photomaker/core";
+import { useT } from "../lib/i18n";
 import { usePhotoStore } from "../lib/store";
 import { ExportResultCard } from "./ResultCard";
 import { IconDownload, IconX } from "./icons";
@@ -26,6 +27,7 @@ export function FamilyPanel() {
   const reset = usePhotoStore((s) => s.reset);
 
   const [output, setOutput] = useState<"pdf" | "jpeg">("pdf");
+  const { t, locale } = useT();
 
   const batchFormat = batch[0] ? getFormat(batch[0].formatId) : null;
   const formatMismatch = batchFormat !== null && batchFormat.id !== formatId;
@@ -50,12 +52,11 @@ export function FamilyPanel() {
 
   return (
     <section aria-label="Family sheet" className="space-y-4">
-      <p className="eyebrow">Family sheet</p>
+      <p className="eyebrow">{t.family.eyebrow}</p>
 
       {batch.length === 0 ? (
         <p className="text-[13px] leading-relaxed text-ink-muted">
-          Doing photos for several people? Add this photo, then load the next
-          person — everyone shares one print, cut apart after printing.
+          {t.family.intro}
         </p>
       ) : (
         <ul className="space-y-2">
@@ -78,7 +79,7 @@ export function FamilyPanel() {
               )}
               <button
                 type="button"
-                aria-label={`Remove ${member.label}`}
+                aria-label={t.family.removePerson(member.label)}
                 onClick={() => removeBatchMember(member.id)}
                 className="flex h-8 w-8 items-center justify-center rounded-full text-ink-faint hover:bg-line/40 hover:text-ink"
               >
@@ -97,17 +98,16 @@ export function FamilyPanel() {
           onClick={() => void addToBatch()}
         >
           {batchBusy
-            ? "Adding…"
+            ? t.family.adding
             : batch.length === 0
-              ? "Add this photo to a family sheet"
-              : "Add this photo too"}
+              ? t.family.addFirst
+              : t.family.addToo}
         </button>
       )}
 
       {formatMismatch && batchFormat && (
         <p className="text-xs leading-relaxed text-warn">
-          This family sheet is {batchFormat.label.en} — switch back to that
-          format to add more people, or clear the batch.
+          {t.family.mismatch(batchFormat.label[locale] ?? batchFormat.label.en!)}
         </p>
       )}
 
@@ -120,33 +120,30 @@ export function FamilyPanel() {
               disabled={busy}
               onClick={reset}
             >
-              Add another person (load their photo)
+              {t.family.addAnother}
             </button>
           )}
 
           {plan ? (
             <p className="text-[13px] text-ink-muted">
               <span className="font-semibold text-ink">
-                {batch.length} {batch.length === 1 ? "person" : "people"}
+                {t.family.people(batch.length)}
               </span>{" "}
-              · {plan.copies} photos on {paperLabel(getPaper(paperId))} (
-              {plan.counts.join(" + ")} each)
+              · {t.family.photosOn(plan.copies, paperLabel(getPaper(paperId), locale), plan.counts.join(" + "))}
             </p>
           ) : (
             <p className="text-[13px] text-warn">
-              {batch.length} people don't fit on{" "}
-              {paperLabel(getPaper(paperId))} — pick a larger paper in the
-              Print sheet panel.
+              {t.family.noFit(batch.length, paperLabel(getPaper(paperId), locale))}
             </p>
           )}
 
           <div className="flex flex-wrap gap-1.5" role="group" aria-label="File type">
             {(
               [
-                { id: "pdf", label: "PDF · recommended" },
-                { id: "jpeg", label: "JPEG" },
+                { id: "pdf", labelKey: "pdfRec" },
+                { id: "jpeg", labelKey: "jpeg" },
               ] as const
-            ).map(({ id, label }) => {
+            ).map(({ id, labelKey }) => {
               const selected = output === id;
               return (
                 <button
@@ -160,7 +157,7 @@ export function FamilyPanel() {
                       : "border-line bg-surface text-ink-muted hover:border-line-strong"
                   }`}
                 >
-                  {label}
+                  {t.sheet[labelKey]}
                 </button>
               );
             })}
@@ -174,8 +171,8 @@ export function FamilyPanel() {
           >
             <IconDownload className="h-4 w-4" />
             {batchBusy
-              ? "Preparing sheet…"
-              : `Download family sheet (${output.toUpperCase()})`}
+              ? t.sheet.preparingSheet
+              : t.family.downloadFamily(output.toUpperCase())}
           </button>
 
           <ExportResultCard kinds={["family"]} />
@@ -186,7 +183,7 @@ export function FamilyPanel() {
             disabled={busy}
             onClick={clearBatch}
           >
-            Clear the family sheet
+            {t.family.clear}
           </button>
         </>
       )}

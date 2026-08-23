@@ -164,6 +164,7 @@ function imageChecks(
       items.push({
         id: "exposure",
         level: "warn",
+        variant: "dark",
         value: face.mean,
         message: "Face is too dark",
         hint: "Use more light from the front, or raise brightness in Adjust.",
@@ -172,6 +173,7 @@ function imageChecks(
       items.push({
         id: "exposure",
         level: "warn",
+        variant: "bright",
         value: face.mean,
         message: "Face is overexposed",
         hint: "Avoid direct flash and bright windows behind the camera; lower brightness in Adjust.",
@@ -235,6 +237,7 @@ function imageChecks(
         ? {
             id: "background",
             level: "ok",
+            variant: "replaced",
             message:
               format.background === "any"
                 ? "Background will be replaced with a plain colour"
@@ -243,6 +246,7 @@ function imageChecks(
         : {
             id: "background",
             level: "warn",
+            variant: "fill-mismatch",
             message: `Background should be ${label} — a different fill is selected`,
             hint: "Pick the required colour under Background before downloading.",
           },
@@ -253,6 +257,7 @@ function imageChecks(
       items.push({
         id: "background",
         level: "warn",
+        variant: "busy",
         value: bg.std,
         message: "Background is not plain",
         hint: "Stand in front of a plain, evenly lit wall — or use Remove background below.",
@@ -261,6 +266,7 @@ function imageChecks(
       items.push({
         id: "background",
         level: "warn",
+        variant: "wrong-colour",
         value: bg.mean,
         message: `Background should be ${label} — yours looks different`,
         hint: "Use Remove background below to replace it with the required colour.",
@@ -269,6 +275,7 @@ function imageChecks(
       items.push({
         id: "background",
         level: "ok",
+        variant: "plain",
         value: bg.std,
         message:
           format.background === "any"

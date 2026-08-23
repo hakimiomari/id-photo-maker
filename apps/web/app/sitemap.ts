@@ -17,5 +17,17 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "monthly" as const,
       priority: 0.7,
     })),
+    ...slugs.flatMap((slug) => [
+      {
+        url: `${BASE}/fa/${slug}`,
+        changeFrequency: "monthly" as const,
+        priority: 0.7,
+      },
+      {
+        url: `${BASE}/ps/${slug}`,
+        changeFrequency: "monthly" as const,
+        priority: 0.7,
+      },
+    ]),
   ];
 }

@@ -13,7 +13,9 @@ import { IconCheck, IconLock, LogoMark } from "./icons";
  * locale from /[slug] and /de/[slug]. Every number comes from the registry.
  */
 
-export type Locale = "en" | "de";
+import { LOCALE_META, type Locale } from "../lib/locales";
+
+export type { Locale };
 
 const STRINGS = {
   en: {
@@ -135,6 +137,127 @@ const STRINGS = {
         : []),
     ],
   },
+  fa: {
+    h1: (label: string, f: PhotoFormat) =>
+      `عکس ${label} — ${f.width_mm} × ${f.height_mm} میلی‌متر، رایگان در مرورگر شما`,
+    intro: (label: string) =>
+      `پورتریت خود را بارگذاری کنید و یک عکس ${label} با اندازهٔ درست و آمادهٔ چاپ دریافت کنید: تشخیص خودکار چهره، نسبت رسمی ارتفاع سر و دانلود با کیفیت کامل بدون واترمارک. عکس شما هرگز از دستگاه‌تان خارج نمی‌شود.`,
+    cta: "در ویرایشگر باز کنید",
+    ctaBottom: (f: PhotoFormat) =>
+      `با ${f.width_mm} × ${f.height_mm} میلی‌متر شروع کنید`,
+    onDevice: "100٪ روی دستگاه شما — بدون آپلود",
+    requirements: "شرایط رسمی",
+    photoSize: "اندازهٔ عکس",
+    headHeight: "ارتفاع سر (از چانه تا فرق سر)",
+    eyeLine: "خط چشم از لبهٔ پایین",
+    background: "پس‌زمینه",
+    resolution: "کیفیت چاپ",
+    resolutionValue: (f: PhotoFormat) => `${f.target_dpi} DPI (حداقل ${f.min_dpi})`,
+    digitalUpload: "آپلود دیجیتال",
+    perSheet: "تعداد عکس در هر چاپ 10 × 15 سانتی‌متر",
+    faqTitle: "پرسش‌های متداول",
+    finalTitle: (label: string) => `همین حالا عکس ${label} خود را بسازید`,
+    finalSub:
+      "رایگان، کیفیت کامل، بدون واترمارک، بدون ثبت‌نام. روی موبایل هم کار می‌کند.",
+    verified: (f: PhotoFormat) =>
+      `آخرین بررسی مشخصات: ${f.verified_date}${f.verification_status === "seeded" ? " (هنوز دوباره تأیید نشده)" : ""}. این ابزار به هیچ نهاد دولتی وابسته نیست — شرایط را همیشه از مرجع صادرکننده تأیید کنید.`,
+    source: "منبع رسمی",
+    backgrounds: {
+      white: "سفید ساده",
+      light_grey: "خاکستری روشن (ساده و یکنواخت)",
+      off_white: "سفید مایل به کریمی",
+      blue: "آبی",
+      red: "سرخ",
+      any: "شرط رسمی ندارد — پس‌زمینهٔ ساده و یکنواخت مطمئن‌ترین است",
+    } as Record<string, string>,
+    faq: (label: string, f: PhotoFormat, copies: number) => [
+      {
+        q: `اندازهٔ عکس ${label} چقدر است؟`,
+        a: `${f.width_mm} × ${f.height_mm} میلی‌متر.${
+          f.head_min_mm !== null && f.head_max_mm !== null
+            ? ` سر، از چانه تا فرق، باید ${f.head_min_mm}–${f.head_max_mm} میلی‌متر باشد.`
+            : ""
+        }`,
+      },
+      {
+        q: "آیا می‌توانم این عکس را آنلاین و رایگان بسازم؟",
+        a: `بله. این ابزار عکس شما را به اندازهٔ ${f.width_mm} × ${f.height_mm} میلی‌متر با موقعیت درست سر برش می‌زند، آن را با شرایط اندازه می‌سنجد و یک فایل با کیفیت کامل و بدون واترمارک می‌دهد. همهٔ پردازش در مرورگر شما انجام می‌شود — عکس هرگز آپلود نمی‌شود.`,
+      },
+      {
+        q: "چطور آن را ارزان چاپ کنم؟",
+        a: `برگهٔ چاپ را دانلود کنید: ${copies} عکس روی یک چاپ استاندارد 10 × 15 سانتی‌متر با خط‌های برش. آن را مانند یک عکس معمولی در هر عکاسی یا فروشگاه چاپ کنید (معمولاً کمتر از 1 یورو) و در امتداد خط‌ها ببرید. هنگام چاپ «اندازهٔ واقعی» را انتخاب کنید — هرگز «متناسب با صفحه» را نه.`,
+      },
+      ...(f.digital_spec
+        ? [
+            {
+              q: "آیا نسخه‌ای برای درخواست‌های آنلاین هست؟",
+              a: `بله — ویرایشگر می‌تواند فایل ${f.digital_spec.width_px} × ${f.digital_spec.height_px} پیکسل ${f.digital_spec.format.toUpperCase()} با حداکثر ${formatBytes(f.digital_spec.max_bytes)} نیز بسازد، مطابق شرایط آپلود دیجیتال.`,
+            },
+          ]
+        : []),
+    ],
+  },
+  ps: {
+    h1: (label: string, f: PhotoFormat) =>
+      `${label} عکس — ${f.width_mm} × ${f.height_mm} ملي متره، وړیا ستاسو په براوزر کې`,
+    intro: (label: string) =>
+      `خپل پورټریټ پورته کړئ او یو سم اندازه شوی، د چاپ لپاره چمتو د ${label} عکس ترلاسه کړئ: د مخ اتوماتیک پېژندنه، د سر د لوړوالي رسمي نسبت، او له واترمارک پرته بشپړ کیفیت ډاونلوډ. ستاسو عکس هېڅکله له وسیلې نه بهر نه ځي.`,
+    cta: "په ایډیټر کې یې پرانیزئ",
+    ctaBottom: (f: PhotoFormat) =>
+      `له ${f.width_mm} × ${f.height_mm} ملي متره سره پیل وکړئ`,
+    onDevice: "100٪ ستاسو په وسیله کې — هېڅ اپلوډ نشته",
+    requirements: "رسمي شرطونه",
+    photoSize: "د عکس اندازه",
+    headHeight: "د سر لوړوالی (له زنې تر څوکې)",
+    eyeLine: "د سترګو کرښه له لاندې څنډې",
+    background: "شالید",
+    resolution: "د چاپ کیفیت",
+    resolutionValue: (f: PhotoFormat) =>
+      `${f.target_dpi} DPI (لږ تر لږه ${f.min_dpi})`,
+    digitalUpload: "ډیجیټل اپلوډ",
+    perSheet: "په هر 10 × 15 سانتي متره چاپ کې عکسونه",
+    faqTitle: "ډېرې پوښتل شوې پوښتنې",
+    finalTitle: (label: string) => `همدا اوس خپل ${label} عکس جوړ کړئ`,
+    finalSub:
+      "وړیا، بشپړ کیفیت، بې واترمارکه، بې ثبت نام. په موبایل هم کار کوي.",
+    verified: (f: PhotoFormat) =>
+      `مشخصات وروستی ځل په ${f.verified_date} وکتل شول${f.verification_status === "seeded" ? " (لا بیا نه دي تایید شوي)" : ""}. له هېڅ دولتي ادارې سره تړاو نه لري — شرطونه تل له صادروونکې ادارې څخه تایید کړئ.`,
+    source: "رسمي سرچینه",
+    backgrounds: {
+      white: "ساده سپین",
+      light_grey: "روښانه خړ (ساده او یو شان)",
+      off_white: "کریمي سپین",
+      blue: "شین (آبي)",
+      red: "سور",
+      any: "رسمي شرط نه لري — ساده او یو شان شالید تر ټولو خوندي دی",
+    } as Record<string, string>,
+    faq: (label: string, f: PhotoFormat, copies: number) => [
+      {
+        q: `${label} عکس اندازه څومره ده؟`,
+        a: `${f.width_mm} × ${f.height_mm} ملي متره.${
+          f.head_min_mm !== null && f.head_max_mm !== null
+            ? ` سر، له زنې تر څوکې، باید ${f.head_min_mm}–${f.head_max_mm} ملي متره وي.`
+            : ""
+        }`,
+      },
+      {
+        q: "ایا دا عکس آنلاین او وړیا جوړولای شم؟",
+        a: `هو. دا وسیله ستاسو عکس د سر له سم موقعیت سره ${f.width_mm} × ${f.height_mm} ملي متره اندازې ته برش کوي، له شرطونو سره یې پرتله کوي، او یو بشپړ کیفیت فایل بې واترمارکه درکوي. ټول پروسس ستاسو په براوزر کې کېږي — عکس هېڅکله نه اپلوډ کېږي.`,
+      },
+      {
+        q: "څنګه یې ارزانه چاپ کړم؟",
+        a: `د چاپ پاڼه ډاونلوډ کړئ: ${copies} عکسونه په یوه معیاري 10 × 15 سانتي متره چاپ کې د برش له کرښو سره. په هره عکاسۍ کې یې د عادي عکس په توګه چاپ کړئ (معمولاً تر 1 یورو کم) او د کرښو په اوږدو کې یې پرې کړئ. د چاپ پر مهال «اصلي اندازه» غوره کړئ — هېڅکله «له پاڼې سره برابر» نه.`,
+      },
+      ...(f.digital_spec
+        ? [
+            {
+              q: "ایا د آنلاین غوښتنلیکونو لپاره بڼه شته؟",
+              a: `هو — ایډیټر کولای شي ${f.digital_spec.width_px} × ${f.digital_spec.height_px} پیکسله ${f.digital_spec.format.toUpperCase()} فایل هم جوړ کړي چې له ${formatBytes(f.digital_spec.max_bytes)} نه زیات نه وي، د ډیجیټل اپلوډ له شرطونو سره سم.`,
+            },
+          ]
+        : []),
+    ],
+  },
 } as const;
 
 export function FormatLanding({
@@ -176,10 +299,15 @@ export function FormatLanding({
     [t.perSheet, `${sheet.copies}`],
   ];
 
-  const editorHref = `/?format=${format.id}`;
+  const editorHref = `/?format=${format.id}&lang=${locale}`;
 
+  const meta = LOCALE_META[locale];
   return (
-    <main className="mx-auto max-w-3xl px-4 pb-16 pt-8 sm:px-6">
+    <main
+      dir={meta.dir}
+      lang={meta.lang}
+      className="mx-auto max-w-3xl px-4 pb-16 pt-8 sm:px-6"
+    >
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
@@ -223,7 +351,7 @@ export function FormatLanding({
               }`}
             >
               <dt className="text-ink-muted">{term}</dt>
-              <dd className="text-right font-medium tabular-nums">{value}</dd>
+              <dd className="text-end font-medium tabular-nums">{value}</dd>
             </div>
           ))}
         </dl>

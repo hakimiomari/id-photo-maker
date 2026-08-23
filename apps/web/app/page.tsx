@@ -13,14 +13,11 @@ import { Uploader } from "../components/Uploader";
 import { ValidationPanel } from "../components/ValidationPanel";
 import { IconCheck, IconLock, LogoMark } from "../components/icons";
 import { ThemeToggle } from "../components/ThemeToggle";
+import { initLocale, useT } from "../lib/i18n";
+import { LanguagePicker } from "../components/LanguagePicker";
 import { usePhotoStore } from "../lib/store";
 
-const STEPS = [
-  { id: "format", label: "Format" },
-  { id: "photo", label: "Photo" },
-  { id: "adjust", label: "Adjust" },
-  { id: "download", label: "Download" },
-] as const;
+const STEP_IDS = ["format", "photo", "adjust", "download"] as const;
 
 function FamilyPanelCard() {
   // Outside the ready-only group: the collected family members must stay
@@ -41,10 +38,12 @@ export default function Home() {
   const format = usePhotoStore((s) => s.format());
   const reset = usePhotoStore((s) => s.reset);
   const ready = status === "ready";
-  const stageIndex = STEPS.findIndex((s) => s.id === stage);
+  const stageIndex = STEP_IDS.indexOf(stage);
+  const { t, locale } = useT();
 
-  // SEO pages deep-link into the editor with ?format=<id> (§8.3).
+  // SEO pages deep-link into the editor with ?format=<id>&lang=<locale> (§8.3).
   useEffect(() => {
+    initLocale();
     const id = new URLSearchParams(window.location.search).get("format");
     if (id && findFormat(id)) usePhotoStore.getState().setFormat(id);
   }, []);
@@ -59,16 +58,16 @@ export default function Home() {
               ID Photo Maker
             </h1>
             <p className="mt-0.5 max-w-xl text-balance text-sm leading-relaxed text-ink-muted">
-              Passport and ID photos, sized correctly for printing. Everything
-              runs in your browser — your photo never leaves your device.
+              {t.tagline}
             </p>
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2.5">
           <span className="hidden items-center gap-1.5 whitespace-nowrap rounded-full border border-ok-border bg-ok-soft px-3 py-1.5 text-xs font-medium text-ok sm:inline-flex">
             <IconLock className="h-3.5 w-3.5" />
-            100% on-device
+            {t.onDevicePill}
           </span>
+          <LanguagePicker />
           <ThemeToggle />
         </div>
       </header>
@@ -77,11 +76,11 @@ export default function Home() {
         aria-label="Progress"
         className="mb-7 flex items-center gap-2 sm:gap-3"
       >
-        {STEPS.map((step, index) => {
+        {STEP_IDS.map((stepId, index) => {
           const current = index === stageIndex;
           const done = index < stageIndex;
           return (
-            <li key={step.id} className="flex min-w-0 flex-1 items-center gap-2 last:flex-none sm:gap-3">
+            <li key={stepId} className="flex min-w-0 flex-1 items-center gap-2 last:flex-none sm:gap-3">
               <span
                 aria-current={current ? "step" : undefined}
                 className="flex shrink-0 items-center gap-2"
@@ -102,10 +101,10 @@ export default function Home() {
                     current ? "text-ink" : done ? "text-ink-muted" : "text-ink-faint"
                   } ${current ? "" : "hidden sm:inline"}`}
                 >
-                  {step.label}
+                  {t.steps[stepId]}
                 </span>
               </span>
-              {index < STEPS.length - 1 && (
+              {index < STEP_IDS.length - 1 && (
                 <span
                   aria-hidden
                   className={`h-px min-w-3 flex-1 ${done ? "bg-accent-border" : "bg-line-strong"}`}
@@ -123,12 +122,12 @@ export default function Home() {
               <Editor />
               <div className="flex flex-wrap items-center justify-between gap-3 text-[13px] text-ink-faint">
                 <span>
-                  Drag to reposition · scroll or pinch to zoom ·{" "}
-                  <kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd> <kbd>↓</kbd> pan,{" "}
-                  <kbd>+</kbd> <kbd>−</kbd> zoom
+                  {t.hintIntro}{" "}
+                  <kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd> <kbd>↓</kbd> {t.hintPan}{" "}
+                  <kbd>+</kbd> <kbd>−</kbd> {t.hintZoom}
                 </span>
                 <button type="button" className="btn-secondary" onClick={reset}>
-                  Use another photo
+                  {t.useAnother}
                 </button>
               </div>
             </>
@@ -139,9 +138,9 @@ export default function Home() {
 
         <aside className="space-y-5">
           <section className="card p-5">
-            <p className="eyebrow">Format</p>
+            <p className="eyebrow">{t.steps.format}</p>
             <h2 className="mb-4 mt-1 text-sm font-semibold">
-              {formatLabel(format)} · {format.width_mm} × {format.height_mm} mm
+              {formatLabel(format, locale)} · {format.width_mm} × {format.height_mm} mm
             </h2>
             <FormatPicker />
           </section>
@@ -172,20 +171,12 @@ export default function Home() {
       <footer className="mt-16 border-t border-line pt-6">
         <div className="flex flex-col gap-4 text-xs leading-relaxed text-ink-faint sm:flex-row sm:items-start sm:justify-between">
           <div className="max-w-2xl space-y-2">
-            <p>
-              Not affiliated with any government. Always verify photo
-              requirements with the issuing authority before submitting.
-            </p>
-            <p>
-              German note: since 2025, photos for the Personalausweis and
-              Reisepass must be transmitted digitally by a certified provider
-              and cannot be produced with this app. Driving licence photos are
-              still accepted on paper.
-            </p>
+            <p>{t.footerDisclaimer}</p>
+            <p>{t.footerGerman}</p>
           </div>
           <span className="inline-flex shrink-0 items-center gap-1.5 text-ink-faint">
             <IconLock className="h-3.5 w-3.5" />
-            No uploads. No tracking of your photos.
+            {t.noUploadsFooter}
           </span>
         </div>
       </footer>

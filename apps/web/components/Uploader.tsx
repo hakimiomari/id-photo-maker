@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { cameraSupported } from "../lib/camera";
+import { localizeError, useT } from "../lib/i18n";
 import { usePhotoStore } from "../lib/store";
 import { CameraCapture } from "./CameraCapture";
 import { IconAlert, IconCamera, IconLock, IconUpload } from "./icons";
@@ -18,6 +19,8 @@ export function Uploader() {
   const loadFile = usePhotoStore((s) => s.loadFile);
   const status = usePhotoStore((s) => s.status);
   const error = usePhotoStore((s) => s.error);
+  const errorCode = usePhotoStore((s) => s.errorCode);
+  const { t } = useT();
   const loading = status === "loading";
 
   if (cameraOpen) {
@@ -78,15 +81,10 @@ export function Uploader() {
 
         <div className="space-y-1.5">
           <p className="text-base font-semibold tracking-tight">
-            {loading
-              ? "Reading your photo…"
-              : dragging
-                ? "Drop it here"
-                : "Add your photo"}
+            {loading ? t.uploader.reading : dragging ? t.uploader.drop : t.uploader.title}
           </p>
           <p className="mx-auto max-w-sm text-balance text-sm leading-relaxed text-ink-muted">
-            JPEG, PNG, WebP or HEIC. Face the camera, plain background, whole
-            head visible with some space above it.
+            {t.uploader.formats}
           </p>
         </div>
 
@@ -98,7 +96,7 @@ export function Uploader() {
             disabled={loading}
           >
             <IconUpload className="h-4 w-4" />
-            Choose a photo
+            {t.uploader.choose}
           </button>
           <button
             type="button"
@@ -107,7 +105,7 @@ export function Uploader() {
             disabled={loading}
           >
             <IconCamera className="h-4 w-4" />
-            Take a photo
+            {t.uploader.take}
           </button>
         </div>
 
@@ -117,12 +115,12 @@ export function Uploader() {
           onClick={() => void loadSample()}
           disabled={loading}
         >
-          No photo handy? Try a sample photo
+          {t.uploader.sample}
         </button>
 
         <p className="mt-2 inline-flex items-center gap-1.5 text-xs text-ink-faint">
           <IconLock className="h-3.5 w-3.5" />
-          Your photo is processed on your device and never uploaded.
+          {t.uploader.privacy}
         </p>
 
         <input
@@ -154,7 +152,7 @@ export function Uploader() {
           <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-danger text-surface">
             <IconAlert className="h-3 w-3" strokeWidth={2.5} />
           </span>
-          {error}
+          {localizeError(errorCode, error, t)}
         </p>
       )}
     </div>
