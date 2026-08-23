@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "../lib/i18n";
 import { usePhotoStore, type ExportResult } from "../lib/store";
 import { formatBytes } from "../lib/bytes";
 import { IconCheck, IconDownload } from "./icons";
@@ -12,9 +13,23 @@ import { IconCheck, IconDownload } from "./icons";
 export function ExportResultCard({ kinds }: { kinds: ExportResult["kind"][] }) {
   const exportResult = usePhotoStore((s) => s.exportResult);
   const clearExport = usePhotoStore((s) => s.clearExport);
+  const { t } = useT();
 
   if (!exportResult || !kinds.includes(exportResult.kind)) return null;
   const sheet = exportResult.kind === "sheet" || exportResult.kind === "family";
+
+  const headline =
+    exportResult.kind === "family"
+      ? t.result.familyReady
+      : sheet
+        ? t.result.sheetReady
+        : t.result.photoReady;
+
+  const meta = sheet
+    ? `${exportResult.copies} ${t.sheet.perSheet(exportResult.copies ?? 0).replace(/^\d+\s*/, "")}${
+        exportResult.perMember ? ` ${t.result.perPerson(exportResult.perMember.join(" + "))}` : ""
+      } · ${exportResult.width} × ${exportResult.height} mm · ${formatBytes(exportResult.bytes)}`
+    : `${exportResult.width} × ${exportResult.height} px · ${exportResult.dpi} DPI · ${formatBytes(exportResult.bytes)}`;
 
   return (
     <div className="space-y-3 rounded-control border border-ok-border bg-ok-soft p-4">
@@ -22,20 +37,10 @@ export function ExportResultCard({ kinds }: { kinds: ExportResult["kind"][] }) {
         <span className="flex h-[18px] w-[18px] items-center justify-center rounded-full bg-ok text-surface">
           <IconCheck className="h-3 w-3" strokeWidth={2.75} />
         </span>
-        {exportResult.kind === "family"
-          ? "Your family sheet is ready."
-          : sheet
-            ? "Your print sheet is ready."
-            : "Your photo is ready."}
+        {headline}
       </p>
-      <p className="tabular-nums text-xs text-ink-muted">
-        {sheet
-          ? `${exportResult.copies} photos${
-              exportResult.perMember
-                ? ` (${exportResult.perMember.join(" + ")} per person)`
-                : ""
-            } · ${exportResult.width} × ${exportResult.height} mm · ${formatBytes(exportResult.bytes)}`
-          : `${exportResult.width} × ${exportResult.height} px · ${exportResult.dpi} DPI · ${formatBytes(exportResult.bytes)}`}
+      <p className="tabular-nums text-xs text-ink-muted" dir="ltr">
+        {meta}
       </p>
       <div className="flex flex-col gap-2">
         <a
@@ -44,16 +49,14 @@ export function ExportResultCard({ kinds }: { kinds: ExportResult["kind"][] }) {
           download={exportResult.filename}
         >
           <IconDownload className="h-4 w-4" />
-          Save {exportResult.filename}
+          {t.result.save} {exportResult.filename}
         </a>
         <button type="button" className="btn-ghost" onClick={clearExport}>
-          Keep editing
+          {t.result.keepEditing}
         </button>
       </div>
       <p className="text-xs leading-relaxed text-ink-muted">
-        {sheet
-          ? "Order this as a normal photo print, then cut along the marks. Choose “actual size” when printing — never “fit to page”."
-          : "The file carries its physical size — choose “actual size” / “no scaling” when printing. For the cheapest prints, use the print sheet below."}
+        {sheet ? t.result.adviceSheet : t.result.advicePhoto}
       </p>
     </div>
   );

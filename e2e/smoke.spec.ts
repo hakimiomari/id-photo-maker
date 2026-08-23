@@ -150,6 +150,53 @@ test("German SEO page renders localized content", async ({ page }) => {
   await expect(page.getByText("Kopfhöhe (Kinn bis Scheitel)")).toBeVisible();
 });
 
+test("Dari and Pashto SEO pages render right-to-left", async ({ page }) => {
+  await page.goto("/fa/us-passport-photo");
+  const mainFa = page.locator("main");
+  await expect(mainFa).toHaveAttribute("dir", "rtl");
+  await expect(mainFa).toHaveAttribute("lang", "fa-AF");
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("پاسپورت");
+  // Registry numbers survive translation untouched.
+  await expect(page.getByText("51 × 51").first()).toBeVisible();
+
+  await page.goto("/ps/de-fuehrerschein-photo");
+  const mainPs = page.locator("main");
+  await expect(mainPs).toHaveAttribute("dir", "rtl");
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("جواز");
+
+  // Deep-link lands in the editor with format AND language preselected.
+  await page.getByRole("link", { name: "په ایډیټر کې یې پرانیزئ" }).click();
+  await page.waitForURL(/format=de-fuehrerschein/);
+  await expect(
+    page.getByRole("heading", { name: /د آلمان د موټر چلونې جواز · 35 × 45 mm/ }),
+  ).toBeVisible();
+});
+
+test("editor language switch: Dari applies, mirrors, persists", async ({ page }) => {
+  await page.goto("/");
+  const html = page.locator("html");
+  await expect(html).toHaveAttribute("dir", "ltr");
+
+  await page.getByLabel("Language").selectOption("fa");
+  await expect(html).toHaveAttribute("dir", "rtl");
+  await expect(html).toHaveAttribute("lang", "fa-AF");
+  await expect(page.getByRole("button", { name: "انتخاب عکس" })).toBeVisible();
+
+  // Persists across reload.
+  await page.reload();
+  await expect(html).toHaveAttribute("dir", "rtl");
+
+  // The landing-page CTA deep-links the language too.
+  await page.goto("/ps/us-passport-photo");
+  await page.getByRole("link", { name: "په ایډیټر کې یې پرانیزئ" }).click();
+  await expect(html).toHaveAttribute("lang", "ps");
+  await expect(page.getByRole("button", { name: "عکس وټاکئ" })).toBeVisible();
+
+  // Back to English for the remaining tests' sake.
+  await page.getByLabel("ژبه").selectOption("en");
+  await expect(html).toHaveAttribute("dir", "ltr");
+});
+
 test("unknown format slugs 404", async ({ page }) => {
   const response = await page.goto("/klingon-passport-photo");
   expect(response?.status()).toBe(404);

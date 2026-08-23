@@ -8,6 +8,7 @@ import {
   paperLabel,
   type SheetLayout,
 } from "@photomaker/core";
+import { useT } from "../lib/i18n";
 import { usePhotoStore } from "../lib/store";
 import { ExportResultCard } from "./ResultCard";
 import { IconDownload } from "./icons";
@@ -19,6 +20,7 @@ export function SheetPanel() {
   const setPaper = usePhotoStore((s) => s.setPaper);
   const exporting = usePhotoStore((s) => s.exporting);
   const exportSheet = usePhotoStore((s) => s.exportSheet);
+  const { t, locale } = useT();
 
   // File type is a *selection* (like the paper chips above); one button acts.
   const [output, setOutput] = useState<"pdf" | "jpeg">("pdf");
@@ -46,9 +48,9 @@ export function SheetPanel() {
 
   return (
     <section aria-label="Print sheet" className="space-y-4">
-      <p className="eyebrow">Print sheet</p>
+      <p className="eyebrow">{t.sheet.eyebrow}</p>
 
-      <div className="flex flex-wrap gap-1.5" role="group" aria-label="Paper size">
+      <div className="flex flex-wrap gap-1.5" role="group" aria-label={t.sheet.paperSize}>
         {PAPERS.map((paper) => {
           const selected = paper.id === paperId;
           return (
@@ -63,7 +65,7 @@ export function SheetPanel() {
                   : "border-line bg-surface text-ink-muted hover:border-line-strong"
               }`}
             >
-              {paperLabel(paper)}
+              {paperLabel(paper, locale)}
             </button>
           );
         })}
@@ -73,8 +75,8 @@ export function SheetPanel() {
         <>
           <SheetPreview layout={layout} />
           <p className="text-[13px] text-ink-muted">
-            <span className="font-semibold text-ink">{layout.copies} photos</span>{" "}
-            per sheet · 2 mm gaps · cut marks included
+            <span className="font-semibold text-ink">{t.sheet.perSheet(layout.copies)}</span>{" "}
+            {t.sheet.perSheetTail}
           </p>
 
           <div
@@ -84,10 +86,10 @@ export function SheetPanel() {
           >
             {(
               [
-                { id: "pdf", label: "PDF · recommended" },
-                { id: "jpeg", label: "JPEG" },
+                { id: "pdf", labelKey: "pdfRec" },
+                { id: "jpeg", labelKey: "jpeg" },
               ] as const
-            ).map(({ id, label }) => {
+            ).map(({ id, labelKey }) => {
               const selected = output === id;
               return (
                 <button
@@ -101,7 +103,7 @@ export function SheetPanel() {
                       : "border-line bg-surface text-ink-muted hover:border-line-strong"
                   }`}
                 >
-                  {label}
+                  {t.sheet[labelKey]}
                 </button>
               );
             })}
@@ -114,21 +116,18 @@ export function SheetPanel() {
           >
             <IconDownload className="h-4 w-4" />
             {pending
-              ? "Preparing sheet…"
-              : `Download sheet (${output.toUpperCase()})`}
+              ? t.sheet.preparingSheet
+              : t.sheet.downloadSheet(output.toUpperCase())}
           </button>
 
           <ExportResultCard kinds={["sheet"]} />
           <p className="text-xs leading-relaxed text-ink-faint">
-            Order a plain {paperLabel(getPaper(paperId))} photo print at any
-            drugstore, then cut along the marks. Prefer the PDF where possible —
-            it prints true to size more reliably.
+            {t.sheet.help(paperLabel(getPaper(paperId), locale))}
           </p>
         </>
       ) : (
         <p className="text-sm text-ink-muted">
-          This photo format doesn't fit on {paperLabel(getPaper(paperId))} —
-          pick a larger paper.
+          {t.sheet.noFit(paperLabel(getPaper(paperId), locale))}
         </p>
       )}
     </section>
