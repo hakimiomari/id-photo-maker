@@ -150,6 +150,27 @@ test("German SEO page renders localized content", async ({ page }) => {
   await expect(page.getByText("Kopfhöhe (Kinn bis Scheitel)")).toBeVisible();
 });
 
+test("Dari and Pashto SEO pages render right-to-left", async ({ page }) => {
+  await page.goto("/fa/us-passport-photo");
+  const mainFa = page.locator("main");
+  await expect(mainFa).toHaveAttribute("dir", "rtl");
+  await expect(mainFa).toHaveAttribute("lang", "fa-AF");
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("پاسپورت");
+  // Registry numbers survive translation untouched.
+  await expect(page.getByText("51 × 51").first()).toBeVisible();
+
+  await page.goto("/ps/de-fuehrerschein-photo");
+  const mainPs = page.locator("main");
+  await expect(mainPs).toHaveAttribute("dir", "rtl");
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("جواز");
+
+  // Deep-link still lands in the (English) editor with the format preselected.
+  await page.getByRole("link", { name: "په ایډیټر کې یې پرانیزئ" }).click();
+  await expect(
+    page.getByRole("heading", { name: /German driving licence/ }),
+  ).toBeVisible();
+});
+
 test("unknown format slugs 404", async ({ page }) => {
   const response = await page.goto("/klingon-passport-photo");
   expect(response?.status()).toBe(404);
