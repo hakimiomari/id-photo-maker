@@ -21,6 +21,7 @@ import {
   type CameraSession,
   type FacingMode,
 } from "../lib/camera";
+import { useT } from "../lib/i18n";
 import { detectFrame, usePhotoStore } from "../lib/store";
 import { IconAlert, IconCamera, IconLock, IconSwitchCamera, IconX } from "./icons";
 
@@ -58,6 +59,7 @@ interface Props {
  * pipeline as an uploaded file. The stream never leaves the page.
  */
 export function CameraCapture({ onClose }: Props) {
+  const { t } = useT();
   const format = usePhotoStore((s) => s.format());
   const loadFile = usePhotoStore((s) => s.loadFile);
 
@@ -106,7 +108,7 @@ export function CameraCapture({ onClose }: Props) {
       } catch (err) {
         if (cancelled) return;
         setOpening(false);
-        setError(err instanceof Error ? err.message : "The camera could not be started.");
+        setError(err instanceof Error ? err.message : t.camera.cameraFailed);
       }
     })();
 
@@ -263,7 +265,7 @@ export function CameraCapture({ onClose }: Props) {
       onClose();
     } catch (err) {
       setCapturing(false);
-      setError(err instanceof Error ? err.message : "Could not take the photo.");
+      setError(err instanceof Error ? err.message : t.camera.captureFailed);
     }
   }, [loadFile, onClose]);
 
@@ -284,7 +286,9 @@ export function CameraCapture({ onClose }: Props) {
   };
 
   const ready = !opening && !error && !!frameSize;
-  const hint = guidance ? HINTS[guidance.code] : "Looking for your face…";
+  const hint = guidance
+    ? (t.camera.hints[guidance.code] ?? HINTS[guidance.code])
+    : t.camera.searching;
   const hintTone =
     guidance?.status === "good"
       ? "border-ok-border bg-ok-soft text-ok"
@@ -327,7 +331,7 @@ export function CameraCapture({ onClose }: Props) {
 
         {(opening || capturing) && !error && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/60 text-sm font-medium text-white">
-            {capturing ? "Taking the photo…" : "Starting camera…"}
+            {capturing ? t.camera.takingPhoto : t.camera.starting}
           </div>
         )}
 
@@ -365,7 +369,7 @@ export function CameraCapture({ onClose }: Props) {
             disabled={!ready || countdown !== null || capturing}
           >
             <IconCamera className="h-4 w-4" />
-            {countdown !== null ? `Taking photo in ${countdown}…` : `Take photo (${COUNTDOWN_SECONDS} s timer)`}
+            {countdown !== null ? t.camera.takeIn(countdown) : t.camera.takeBtn(COUNTDOWN_SECONDS)}
           </button>
           {canSwitch && (
             <button
@@ -375,23 +379,22 @@ export function CameraCapture({ onClose }: Props) {
               disabled={countdown !== null || capturing}
             >
               <IconSwitchCamera className="h-4 w-4" />
-              Switch camera
+              {t.camera.switchCam}
             </button>
           )}
           <button type="button" className="btn-ghost" onClick={onClose} disabled={capturing}>
             <IconX className="h-4 w-4" />
-            Cancel
+            {t.camera.cancel}
           </button>
         </div>
         <span className="inline-flex items-center gap-1.5 text-xs text-ink-faint">
           <IconLock className="h-3.5 w-3.5" />
-          Live video stays on your device
+          {t.camera.liveLocal}
         </span>
       </div>
 
       <p className="text-[13px] leading-relaxed text-ink-muted">
-        Plain, evenly lit wall behind you · light on your face, not behind you ·
-        camera at eye level · glasses off if you can.
+        {t.camera.tips}
       </p>
     </div>
   );

@@ -13,20 +13,9 @@ import { IconCheck, IconLock, LogoMark } from "./icons";
  * locale from /[slug] and /de/[slug]. Every number comes from the registry.
  */
 
-export type Locale = "en" | "de" | "fa" | "ps";
+import { LOCALE_META, type Locale } from "../lib/locales";
 
-/**
- * Dari (fa) and Pashto (ps) are right-to-left: the page mirrors via dir on
- * <main>. Translations were machine-drafted and should get a native-speaker
- * review before heavy promotion; the numbers all come from the registry either
- * way.
- */
-export const LOCALE_META: Record<Locale, { lang: string; dir: "ltr" | "rtl" }> = {
-  en: { lang: "en", dir: "ltr" },
-  de: { lang: "de", dir: "ltr" },
-  fa: { lang: "fa-AF", dir: "rtl" },
-  ps: { lang: "ps", dir: "rtl" },
-};
+export type { Locale };
 
 const STRINGS = {
   en: {
@@ -210,7 +199,7 @@ const STRINGS = {
   },
   ps: {
     h1: (label: string, f: PhotoFormat) =>
-      `د ${label} عکس — ${f.width_mm} × ${f.height_mm} ملي متره، وړیا ستاسو په براوزر کې`,
+      `${label} عکس — ${f.width_mm} × ${f.height_mm} ملي متره، وړیا ستاسو په براوزر کې`,
     intro: (label: string) =>
       `خپل پورټریټ پورته کړئ او یو سم اندازه شوی، د چاپ لپاره چمتو د ${label} عکس ترلاسه کړئ: د مخ اتوماتیک پېژندنه، د سر د لوړوالي رسمي نسبت، او له واترمارک پرته بشپړ کیفیت ډاونلوډ. ستاسو عکس هېڅکله له وسیلې نه بهر نه ځي.`,
     cta: "په ایډیټر کې یې پرانیزئ",
@@ -228,7 +217,7 @@ const STRINGS = {
     digitalUpload: "ډیجیټل اپلوډ",
     perSheet: "په هر 10 × 15 سانتي متره چاپ کې عکسونه",
     faqTitle: "ډېرې پوښتل شوې پوښتنې",
-    finalTitle: (label: string) => `همدا اوس خپل د ${label} عکس جوړ کړئ`,
+    finalTitle: (label: string) => `همدا اوس خپل ${label} عکس جوړ کړئ`,
     finalSub:
       "وړیا، بشپړ کیفیت، بې واترمارکه، بې ثبت نام. په موبایل هم کار کوي.",
     verified: (f: PhotoFormat) =>
@@ -244,7 +233,7 @@ const STRINGS = {
     } as Record<string, string>,
     faq: (label: string, f: PhotoFormat, copies: number) => [
       {
-        q: `د ${label} عکس اندازه څومره ده؟`,
+        q: `${label} عکس اندازه څومره ده؟`,
         a: `${f.width_mm} × ${f.height_mm} ملي متره.${
           f.head_min_mm !== null && f.head_max_mm !== null
             ? ` سر، له زنې تر څوکې، باید ${f.head_min_mm}–${f.head_max_mm} ملي متره وي.`
@@ -310,7 +299,7 @@ export function FormatLanding({
     [t.perSheet, `${sheet.copies}`],
   ];
 
-  const editorHref = `/?format=${format.id}`;
+  const editorHref = `/?format=${format.id}&lang=${locale}`;
 
   const meta = LOCALE_META[locale];
   return (
