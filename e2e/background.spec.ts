@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { expandChecks, openAdjustTab, openDownloadTab } from "./shell";
 
 /**
  * Background removal end to end (§5.3): sample photo → MODNet inference in the
@@ -24,6 +25,7 @@ test("remove background → required fill → matted export", async ({
   ).toBeVisible({ timeout: 60_000 });
 
   // Run segmentation. WASM CPU inference can take a while on slow machines.
+  await openAdjustTab(page, "Background");
   await page.getByRole("button", { name: "Remove background" }).click();
   await expect(
     page.getByRole("button", { name: /^Required · / }),
@@ -37,6 +39,7 @@ test("remove background → required fill → matted export", async ({
 
   // Crown refinement note appears; the head-height check still renders.
   await expect(page.getByText(/exact hair outline/)).toBeVisible();
+  await expandChecks(page);
   await expect(page.getByText(/Head height: [\d.]+ mm/)).toBeVisible();
 
   // Before/after toggle works.
@@ -48,6 +51,7 @@ test("remove background → required fill → matted export", async ({
   await page.getByRole("button", { name: "Showing original" }).click();
 
   // Export with the matte applied still produces a file.
+  await openDownloadTab(page, "Photo");
   await page.getByRole("button", { name: /Download photo \(JPEG\)/ }).click();
   await expect(page.getByText("Your photo is ready.")).toBeVisible({
     timeout: 60_000,
