@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { expandChecks } from "./shell";
 
 /**
  * Camera capture (§4.7): open the in-app camera, get live guidance from the
@@ -41,9 +42,10 @@ test("camera → live guidance → timed capture → editor", async ({
   ).toBeVisible({ timeout: 60_000 });
 
   // Same checks panel as an upload; the frame is a real JPEG, not a mirror.
-  await expect(page.getByRole("status")).toContainText(
+  await expect(page.getByRole("button", { name: "Photo checks" })).toContainText(
     /Ready to download|Usable, with warnings/,
   );
+  await expandChecks(page);
   await expect(page.getByText(/Head height: [\d.]+ mm/)).toBeVisible();
 });
 

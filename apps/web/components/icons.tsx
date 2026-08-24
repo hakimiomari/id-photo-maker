@@ -136,6 +136,14 @@ export function IconMonitor(props: IconProps) {
   );
 }
 
+export function IconChevronDown(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="m6 9 6 6 6-6" />
+    </Svg>
+  );
+}
+
 /** App mark: an ID-photo frame with head-height guides. */
 export function LogoMark({ className }: { className?: string }) {
   return (
