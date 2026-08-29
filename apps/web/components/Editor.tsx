@@ -36,6 +36,9 @@ export function Editor() {
   const retouch = usePhotoStore((s) => s.retouch);
   const addRetouchOp = usePhotoStore((s) => s.addRetouchOp);
   const setAttireTransform = usePhotoStore((s) => s.setAttireTransform);
+  const addSelectionPoint = usePhotoStore((s) => s.addSelectionPoint);
+  const closeSelection = usePhotoStore((s) => s.closeSelection);
+  const clearSelection = usePhotoStore((s) => s.clearSelection);
   // One subscription for the whole crop: `solution` is recomputed (and gets a
   // new identity) on every pan, zoom, format change and face change.
   const solution = usePhotoStore((s) => s.solution);
@@ -179,6 +182,42 @@ export function Editor() {
     drawFrame(ctx, frame, area, palette);
     drawOverlay({ ctx, frame, format, solution, head, k, palette });
 
+    // Polygon selection (lasso): open polyline while drawing, dashed closed
+    // shape once finished; the first point is ringed as the "close here" target.
+    const selection = state.retouch.selection;
+    if (selection && selection.points.length >= 2) {
+      const pts = selection.points;
+      const toScreen = (i: number) => [imgX + (pts[i] as number) * k, imgY + (pts[i + 1] as number) * k];
+      ctx.save();
+      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = "rgba(29, 78, 216, 0.95)";
+      ctx.setLineDash(selection.closed ? [6, 4] : [3, 3]);
+      ctx.beginPath();
+      const [x0, y0] = toScreen(0);
+      ctx.moveTo(x0!, y0!);
+      for (let i = 2; i < pts.length; i += 2) {
+        const [x, y] = toScreen(i);
+        ctx.lineTo(x!, y!);
+      }
+      if (selection.closed) {
+        ctx.closePath();
+        ctx.fillStyle = "rgba(29, 78, 216, 0.12)";
+        ctx.fill();
+      }
+      ctx.stroke();
+      ctx.setLineDash([]);
+      for (let i = 0; i < pts.length; i += 2) {
+        const [x, y] = toScreen(i);
+        ctx.beginPath();
+        ctx.arc(x!, y!, i === 0 && !selection.closed && pts.length >= 6 ? 6 : 3.5, 0, Math.PI * 2);
+        ctx.fillStyle = i === 0 ? "rgba(29, 78, 216, 1)" : "#FFFFFF";
+        ctx.fill();
+        ctx.strokeStyle = "rgba(29, 78, 216, 1)";
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
     // Brush cursor for the retouch tools.
     const hover = hoverRef.current;
     if (hover && (state.retouch.tool === "heal" || state.retouch.tool === "smooth")) {
@@ -254,7 +293,25 @@ export function Editor() {
     } else if (tool === "smooth" && pointers.current.size === 1) {
       const p = toImagePoint(event.clientX, event.clientY);
       if (p) strokeRef.current = [p.x, p.y];
+    } else if (tool === "select" && pointers.current.size === 1) {
+      const p = toImagePoint(event.clientX, event.clientY);
+      if (!p) return;
+      const selection = usePhotoStore.getState().retouch.selection;
+      if (selection && !selection.closed && selection.points.length >= 6) {
+        // Clicking back on the first point closes the shape (12 px screen tolerance).
+        const dx = ((selection.points[0] as number) - p.x) * p.k;
+        const dy = ((selection.points[1] as number) - p.y) * p.k;
+        if (Math.hypot(dx, dy) <= 12) {
+          closeSelection();
+          return;
+        }
+      }
+      addSelectionPoint(p.x, p.y);
     }
+  };
+
+  const onDoubleClick = () => {
+    if (usePhotoStore.getState().retouch.tool === "select") closeSelection();
   };
 
   const onPointerMove = (event: React.PointerEvent<HTMLCanvasElement>) => {
@@ -289,7 +346,7 @@ export function Editor() {
       }
       return;
     }
-    if (tool === "heal" && pointers.current.size === 1) return;
+    if ((tool === "heal" || tool === "select") && pointers.current.size === 1) return;
 
     if (pointers.current.size >= 2) {
       const [a, b] = [...pointers.current.values()];
@@ -338,6 +395,11 @@ export function Editor() {
   const onKeyDown = (event: React.KeyboardEvent<HTMLCanvasElement>) => {
     const step = event.shiftKey ? KEY_PAN_FAST : KEY_PAN;
     const k = scaleOf();
+    if (event.key === "Escape" && usePhotoStore.getState().retouch.selection) {
+      clearSelection();
+      event.preventDefault();
+      return;
+    }
     switch (event.key) {
       case "ArrowLeft":
         pan(-step / k, 0);
@@ -381,6 +443,7 @@ export function Editor() {
         onPointerUp={endPointer}
         onPointerCancel={endPointer}
         onWheel={onWheel}
+        onDoubleClick={onDoubleClick}
         onKeyDown={onKeyDown}
       />
       <FacePicker />

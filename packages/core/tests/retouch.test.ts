@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { healSpot } from "../src/retouch/heal";
 import { applySmoothing } from "../src/retouch/smooth";
+import { applyRegion, featherMask, rasterizePolygon } from "../src/retouch/region";
 import { paintStrokeMask, scaleOp, type SmoothOp } from "../src/retouch/ops";
 import type { Size } from "../src/types";
 
@@ -172,6 +173,69 @@ describe("scaleOp", () => {
     if (op.kind === "smooth") {
       expect([...op.points]).toEqual([2, 4]);
       expect(op.radius).toBe(8);
+      expect(op.strength).toBe(0.5);
+    }
+  });
+});
+
+describe("region selection", () => {
+  it("fills the inside of a polygon and nothing outside", () => {
+    // Square from (10,10) to (30,30).
+    const mask = rasterizePolygon([10, 10, 30, 10, 30, 30, 10, 30], SIZE);
+    expect(mask[20 * SIZE.width + 20]).toBe(255);
+    expect(mask[5 * SIZE.width + 5]).toBe(0);
+    expect(mask[20 * SIZE.width + 35]).toBe(0);
+  });
+
+  it("handles concave shapes with even-odd filling", () => {
+    // A "C" shape: outer square minus a notch on the right.
+    const c = [10, 10, 40, 10, 40, 20, 25, 20, 25, 30, 40, 30, 40, 40, 10, 40];
+    const mask = rasterizePolygon(c, SIZE);
+    expect(mask[25 * SIZE.width + 15]).toBe(255); // left spine
+    expect(mask[25 * SIZE.width + 35]).toBe(0);   // inside the notch
+  });
+
+  it("ignores degenerate polygons", () => {
+    const mask = rasterizePolygon([10, 10, 30, 30], SIZE);
+    expect(mask.every((v) => v === 0)).toBe(true);
+  });
+
+  it("feathers the edge into a ramp while keeping the core solid", () => {
+    const hard = rasterizePolygon([16, 16, 48, 16, 48, 48, 16, 48], SIZE);
+    const soft = featherMask(hard, SIZE, 3);
+    expect(soft[32 * SIZE.width + 32]).toBe(255);
+    const edge = soft[32 * SIZE.width + 16] as number;
+    expect(edge).toBeGreaterThan(0);
+    expect(edge).toBeLessThan(255);
+    expect(soft[32 * SIZE.width + 4]).toBe(0);
+  });
+
+  it("darkens inside the selection only, scaled by strength", () => {
+    const data = blemishedImage();
+    const before = data.slice();
+    applyRegion(data, SIZE, {
+      kind: "region",
+      points: Float32Array.from([10, 10, 30, 10, 30, 30, 10, 30]),
+      effect: "darken",
+      strength: 1,
+      feather: 0,
+    });
+    const inside = (20 * SIZE.width + 20) * 4;
+    const outside = (50 * SIZE.width + 50) * 4;
+    expect(data[inside]).toBeLessThan(before[inside] as number);
+    expect(Math.round(((data[inside] as number) / (before[inside] as number)) * 100)).toBe(45);
+    expect(data[outside]).toBe(before[outside]);
+  });
+
+  it("scales region ops including the feather", () => {
+    const op = scaleOp(
+      { kind: "region", points: Float32Array.from([1, 2, 3, 4, 5, 6]), effect: "darken", strength: 0.5, feather: 2 },
+      2,
+    );
+    expect(op.kind).toBe("region");
+    if (op.kind === "region") {
+      expect([...op.points]).toEqual([2, 4, 6, 8, 10, 12]);
+      expect(op.feather).toBe(4);
       expect(op.strength).toBe(0.5);
     }
   });

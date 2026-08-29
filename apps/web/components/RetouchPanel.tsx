@@ -23,6 +23,11 @@ export function RetouchPanel() {
   const removeAttire = usePhotoStore((s) => s.removeAttire);
   const undoRetouch = usePhotoStore((s) => s.undoRetouch);
   const clearRetouch = usePhotoStore((s) => s.clearRetouch);
+  const clearSelection = usePhotoStore((s) => s.clearSelection);
+  const setRegionEffect = usePhotoStore((s) => s.setRegionEffect);
+  const setRegionStrength = usePhotoStore((s) => s.setRegionStrength);
+  const setRegionFeather = usePhotoStore((s) => s.setRegionFeather);
+  const applySelection = usePhotoStore((s) => s.applySelection);
   const workingSize = usePhotoStore((s) => s.workingSize);
   const { t } = useT();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -62,6 +67,7 @@ export function RetouchPanel() {
             { id: "none", label: t.retouch.off },
             { id: "heal", label: t.retouch.heal },
             { id: "smooth", label: t.retouch.smooth },
+            { id: "select", label: t.retouch.select },
           ] as const
         ).map(({ id, label }) => (
           <button
@@ -128,6 +134,84 @@ export function RetouchPanel() {
                 style={{ "--fill": `${((retouch.smoothStrength - 0.1) / 0.6) * 100}%` } as CSSProperties}
               />
             </label>
+          )}
+        </>
+      )}
+
+      {tool === "select" && (
+        <>
+          <p className="text-xs leading-relaxed text-ink-faint">{t.retouch.selectHint}</p>
+          <p className="text-[13px] font-medium text-ink-muted" role="status">
+            {retouch.selection?.closed
+              ? t.retouch.selectionClosed
+              : t.retouch.selectionPoints(retouch.selection ? retouch.selection.points.length / 2 : 0)}
+          </p>
+          {retouch.selection?.closed && (
+            <>
+              <div className="flex flex-wrap gap-1.5" role="group" aria-label={t.retouch.select}>
+                {(
+                  [
+                    { id: "darken", label: t.retouch.effectDarken },
+                    { id: "smooth", label: t.retouch.effectSmooth },
+                  ] as const
+                ).map(({ id, label }) => (
+                  <button
+                    key={id}
+                    type="button"
+                    aria-pressed={retouch.regionEffect === id}
+                    onClick={() => setRegionEffect(id)}
+                    className={chip(retouch.regionEffect === id)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <label className="block">
+                <span className="mb-1.5 flex items-baseline justify-between text-[13px]">
+                  <span className="font-medium text-ink-muted">{t.retouch.strength}</span>
+                  <span className="tabular-nums text-xs font-semibold text-ink">
+                    {Math.round(retouch.regionStrength * 100)}%
+                  </span>
+                </span>
+                <input
+                  type="range"
+                  min={0.1}
+                  max={1}
+                  step={0.05}
+                  value={retouch.regionStrength}
+                  onChange={(event) => setRegionStrength(Number(event.target.value))}
+                  className="slider"
+                  style={{ "--fill": `${((retouch.regionStrength - 0.1) / 0.9) * 100}%` } as CSSProperties}
+                />
+              </label>
+              <label className="block">
+                <span className="mb-1.5 flex items-baseline justify-between text-[13px]">
+                  <span className="font-medium text-ink-muted">{t.retouch.feather}</span>
+                  <span className="tabular-nums text-xs font-semibold text-ink" dir="ltr">
+                    {retouch.regionFeather} px
+                  </span>
+                </span>
+                <input
+                  type="range"
+                  min={0}
+                  max={20}
+                  step={1}
+                  value={retouch.regionFeather}
+                  onChange={(event) => setRegionFeather(Number(event.target.value))}
+                  className="slider"
+                  style={{ "--fill": `${(retouch.regionFeather / 20) * 100}%` } as CSSProperties}
+                />
+              </label>
+              <button type="button" className="btn-primary w-full" onClick={applySelection}>
+                {t.retouch.applySelection}
+              </button>
+            </>
+          )}
+          {retouch.selection && (
+            <button type="button" className="btn-ghost w-full text-xs" onClick={clearSelection}>
+              <IconX className="h-3.5 w-3.5" />
+              {t.retouch.clearSelection}
+            </button>
           )}
         </>
       )}

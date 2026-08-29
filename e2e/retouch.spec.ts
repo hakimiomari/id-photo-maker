@@ -43,6 +43,25 @@ test("heal + smooth + custom attire → export", async ({ page, request }) => {
   await page.getByRole("button", { name: "Undo" }).click();
   await expect(page.getByText("1 edit", { exact: true })).toBeVisible();
 
+  // Lasso selection: four points around the chin area, close on the first
+  // point, apply the hair-darkening effect inside.
+  await page.getByRole("button", { name: "Select area" }).click();
+  const cx = box!.width / 2;
+  const cy = box!.height / 2;
+  for (const [x, y] of [[cx - 40, cy + 20], [cx + 40, cy + 20], [cx + 40, cy + 70], [cx - 40, cy + 70]]) {
+    await canvas.click({ position: { x, y } });
+  }
+  await expect(page.getByRole("status").filter({ hasText: "4 points" })).toBeVisible();
+  await canvas.click({ position: { x: cx - 40, y: cy + 20 } }); // back on the first point
+  await expect(page.getByText("Selection closed", { exact: false })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Darken / thicken hair" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await page.getByRole("button", { name: "Apply to selection" }).click();
+  await expect(page.getByText("2 edits", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Clear selection" }).click();
+
   // Custom attire: generate a "tie" PNG in-page and upload it.
   const tie = await page.evaluate(async () => {
     const c = document.createElement("canvas");

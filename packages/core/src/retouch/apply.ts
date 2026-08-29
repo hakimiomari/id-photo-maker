@@ -8,6 +8,7 @@ import type { RenderSource } from "../render/pipeline";
 import type { Size } from "../types";
 import { healSpot } from "./heal";
 import { applySmoothing } from "./smooth";
+import { applyRegion } from "./region";
 import { paintStrokeMask, scaleOp, type AttireTransform, type RetouchOp } from "./ops";
 
 /**
@@ -34,6 +35,8 @@ export function applyRetouchOps(
     const op = k === 1 ? raw : scaleOp(raw, k);
     if (op.kind === "heal") {
       healSpot(image.data, size, op);
+    } else if (op.kind === "region") {
+      applyRegion(image.data, size, op);
     } else {
       const mask = new Uint8Array(width * height);
       paintStrokeMask(mask, size, op);

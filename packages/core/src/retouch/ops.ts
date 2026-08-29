@@ -27,7 +27,19 @@ export interface SmoothOp {
   strength: number;
 }
 
-export type RetouchOp = HealOp | SmoothOp;
+/** An effect applied inside a closed polygon selection (beard, hair…). */
+export interface RegionOp {
+  kind: "region";
+  /** Closed polygon [x0,y0,x1,y1,…] in working px. */
+  points: Float32Array;
+  effect: "darken" | "smooth";
+  /** 0–1. */
+  strength: number;
+  /** Edge feather radius in px. */
+  feather: number;
+}
+
+export type RetouchOp = HealOp | SmoothOp | RegionOp;
 
 /** The uploaded attire overlay (tie/suit/scarf) and its placement. */
 export interface AttireTransform {
@@ -47,6 +59,9 @@ export function scaleOp(op: RetouchOp, k: number): RetouchOp {
   }
   const points = new Float32Array(op.points.length);
   for (let i = 0; i < op.points.length; i++) points[i] = (op.points[i] as number) * k;
+  if (op.kind === "region") {
+    return { ...op, points, feather: op.feather * k };
+  }
   return { kind: "smooth", points, radius: op.radius * k, strength: op.strength };
 }
 

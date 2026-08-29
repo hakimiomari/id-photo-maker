@@ -38,3 +38,4 @@ export * from "./retouch/ops";
 export * from "./retouch/heal";
 export * from "./retouch/smooth";
 export * from "./retouch/apply";
+export * from "./retouch/region";

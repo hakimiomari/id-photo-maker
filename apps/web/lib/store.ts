@@ -137,8 +137,14 @@ interface PhotoState {
    * documents reject digitally altered photos.
    */
   retouch: {
-    tool: "none" | "heal" | "smooth" | "attire";
+    tool: "none" | "heal" | "smooth" | "attire" | "select";
     ops: RetouchOp[];
+    /** Polygon selection in progress or closed (working px, [x,y,x,y,…]). */
+    selection: { points: number[]; closed: boolean } | null;
+    regionEffect: "darken" | "smooth";
+    regionStrength: number;
+    /** Selection edge feather in working px. */
+    regionFeather: number;
     /** Brush radius in working px. */
     brushRadius: number;
     /** Smoothing strength, capped ≤ 0.7 so results stay natural. */
@@ -191,7 +197,15 @@ interface PhotoState {
   removeBatchMember: (id: number) => void;
   clearBatch: () => void;
   exportFamilySheet: (output: "jpeg" | "pdf") => Promise<void>;
-  setRetouchTool: (tool: "none" | "heal" | "smooth" | "attire") => void;
+  setRetouchTool: (tool: "none" | "heal" | "smooth" | "attire" | "select") => void;
+  addSelectionPoint: (x: number, y: number) => void;
+  closeSelection: () => void;
+  clearSelection: () => void;
+  setRegionEffect: (effect: "darken" | "smooth") => void;
+  setRegionStrength: (strength: number) => void;
+  setRegionFeather: (feather: number) => void;
+  /** Record a region op from the closed selection; the selection stays. */
+  applySelection: () => void;
   addRetouchOp: (op: RetouchOp) => void;
   undoRetouch: () => void;
   clearRetouch: () => void;
@@ -438,6 +452,10 @@ export const usePhotoStore = create<PhotoState>((set, get) => {
     retouch: {
       tool: "none",
       ops: [],
+      selection: null,
+      regionEffect: "darken",
+      regionStrength: 0.5,
+      regionFeather: 4,
       brushRadius: 14,
       smoothStrength: 0.5,
       attire: null,
@@ -519,7 +537,7 @@ export const usePhotoStore = create<PhotoState>((set, get) => {
       });
       get().retouch.attire?.bitmap.close();
       set({
-        retouch: { tool: "none", ops: [], brushRadius: 14, smoothStrength: 0.5, attire: null },
+        retouch: { tool: "none", ops: [], selection: null, regionEffect: "darken", regionStrength: 0.5, regionFeather: 4, brushRadius: 14, smoothStrength: 0.5, attire: null },
       });
 
       try {
@@ -1006,8 +1024,47 @@ export const usePhotoStore = create<PhotoState>((set, get) => {
     clearRetouch: () => {
       get().retouch.attire?.bitmap.close();
       set((state) => ({
-        retouch: { ...state.retouch, ops: [], attire: null, tool: "none" },
+        retouch: { ...state.retouch, ops: [], attire: null, tool: "none", selection: null },
       }));
+    },
+
+    addSelectionPoint: (x, y) =>
+      set((state) => {
+        const current = state.retouch.selection;
+        // A click after a closed selection starts a fresh one.
+        const points = current && !current.closed ? [...current.points, x, y] : [x, y];
+        return { retouch: { ...state.retouch, selection: { points, closed: false } } };
+      }),
+
+    closeSelection: () =>
+      set((state) => {
+        const current = state.retouch.selection;
+        if (!current || current.points.length < 6) return {};
+        return { retouch: { ...state.retouch, selection: { ...current, closed: true } } };
+      }),
+
+    clearSelection: () =>
+      set((state) => ({ retouch: { ...state.retouch, selection: null } })),
+
+    setRegionEffect: (effect) =>
+      set((state) => ({ retouch: { ...state.retouch, regionEffect: effect } })),
+
+    setRegionStrength: (strength) =>
+      set((state) => ({ retouch: { ...state.retouch, regionStrength: strength } })),
+
+    setRegionFeather: (feather) =>
+      set((state) => ({ retouch: { ...state.retouch, regionFeather: feather } })),
+
+    applySelection: () => {
+      const { selection, regionEffect, regionStrength, regionFeather } = get().retouch;
+      if (!selection?.closed) return;
+      get().addRetouchOp({
+        kind: "region",
+        points: Float32Array.from(selection.points),
+        effect: regionEffect,
+        strength: regionStrength,
+        feather: regionFeather,
+      });
     },
 
     setBrushRadius: (radius) =>
@@ -1197,7 +1254,7 @@ export const usePhotoStore = create<PhotoState>((set, get) => {
       });
       get().retouch.attire?.bitmap.close();
       set({
-        retouch: { tool: "none", ops: [], brushRadius: 14, smoothStrength: 0.5, attire: null },
+        retouch: { tool: "none", ops: [], selection: null, regionEffect: "darken", regionStrength: 0.5, regionFeather: 4, brushRadius: 14, smoothStrength: 0.5, attire: null },
       });
     },
   };
